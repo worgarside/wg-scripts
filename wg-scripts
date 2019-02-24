@@ -1,0 +1,1 @@
+/home/pi/.pyenv/shims/python /home/pi/wg-scripts/main.py "$@"
