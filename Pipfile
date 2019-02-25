@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 gitpython = "*"
-wg-utilities = {git = "ssh://git@github.com/worgarside/wg-utilities.git"}
+wg-utilities = "*"
 "beautifulsoup4" = "*"
 python-dotenv = "*"
 websocket-client = "*"
@@ -14,7 +14,3 @@ websocket-client = "*"
 
 [requires]
 python_version = "3.7"
-
-[scripts]
-upgrade_loc = "pipenv run pip install --upgrade git+ssh://git@github.com/worgarside/wg-utilities.git@master#egg=wg_utilities"
-upgrade = "pip install --upgrade git+ssh://git@github.com/worgarside/wg-utilities.git@master#egg=wg_utilities"
