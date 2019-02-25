@@ -1,5 +1,5 @@
 from datetime import datetime
-from os import getenv, path
+from os import getenv, path, makedirs
 from subprocess import Popen, PIPE
 from time import sleep, time
 
@@ -15,6 +15,8 @@ NOW = datetime.now()
 
 load_dotenv(ENV_FILE)
 
+LOG_DIR = '{}logs/'.format(PROJECT_DIR)
+
 HASS_LOCAL_IP = getenv('HASSPI_LOCAL_IP')
 HASS_PORT = getenv('HASS_PORT')
 
@@ -24,8 +26,12 @@ PB_PARAMS = {
 }
 
 
+# TODO create central logging location
 def log(m='', newline=False):
-    with open('{}logs/hass_status_{}-{:02d}-{:02d}.log'.format(PROJECT_DIR, NOW.year, NOW.month, NOW.day), 'a') as f:
+    if not path.isdir(LOG_DIR):
+        makedirs(LOG_DIR)
+
+    with open('{}hass_status_{}-{:02d}-{:02d}.log'.format(LOG_DIR, NOW.year, NOW.month, NOW.day), 'a') as f:
         if newline:
             f.write('\n')
         f.write('\n[{}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}]: {}'
