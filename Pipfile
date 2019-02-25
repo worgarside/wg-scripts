@@ -8,7 +8,7 @@ gitpython = "*"
 wg-utilities = "*"
 "beautifulsoup4" = "*"
 python-dotenv = "*"
-websocket-client = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
 
