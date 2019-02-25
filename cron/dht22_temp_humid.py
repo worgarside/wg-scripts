@@ -11,7 +11,7 @@ from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME
 
 PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
 
-load_dotenv()
+load_dotenv(ENV_FILE)
 
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 DHT22_GPIO = int(getenv('DHT22_GPIO', '-1'))

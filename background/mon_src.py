@@ -1,4 +1,3 @@
-from datetime import datetime
 from time import sleep
 
 from pigpio import pi as rasp_pi, OUTPUT, INPUT
