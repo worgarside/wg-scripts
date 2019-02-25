@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "99c5d384b03bda1a2f3815b3db28ff932a03d57643ba9be53bb1cb4bd77da82f"
+            "sha256": "376c70bd6218c0ee6217b957fa509c6dc445dd161217fc773e93c22d784f6fd8"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -94,6 +94,13 @@
                 "sha256:ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"
             ],
             "version": "==2.8"
+        },
+        "paho-mqtt": {
+            "hashes": [
+                "sha256:e440a052b46d222e184be3be38676378722072fcd4dfd2c8f509fb861a7b0b79"
+            ],
+            "index": "pypi",
+            "version": "==1.4.0"
         },
         "psycopg2-binary": {
             "hashes": [

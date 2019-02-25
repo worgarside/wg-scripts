@@ -9,6 +9,7 @@ wg-utilities = "*"
 "beautifulsoup4" = "*"
 python-dotenv = "*"
 psycopg2-binary = "*"
+paho-mqtt = "*"
 
 [dev-packages]
 
