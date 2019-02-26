@@ -13,10 +13,16 @@ def _compare_files(file1, file2):
         with open(file1) as f1:
             with open(file2) as f2:
                 return f1.read() == f2.read()
+    except UnicodeDecodeError:
+        with open(file1, 'rb') as f1:
+            with open(file2, 'rb') as f2:
+                return f1.read() == f2.read()
     except FileNotFoundError:
         return False
     except Exception:
-        print(file1, file2)
+        print(f'#======== Unable to compare the following files ========#\n'
+              f'{file1}\n{file2}\n'
+              f'#=======================================================#')
         raise
 
 
