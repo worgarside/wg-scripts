@@ -8,3 +8,4 @@ __pycache__
 test.py
 secret_files
 *.pkl
+logs
