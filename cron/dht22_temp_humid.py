@@ -15,7 +15,7 @@ load_dotenv(ENV_FILE)
 
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 DHT22_GPIO = int(getenv('DHT22_GPIO', '-1'))
-MQTT_TOPIC = getenv('DHT22_MQTT_TOPIC')
+MQTT_TOPIC = '/homeassistant/prusamk3/dht22'
 
 spec = spec_from_file_location('dht22', '{}utilities/dht22.py'.format(PROJECT_DIR))
 DHT22 = module_from_spec(spec)

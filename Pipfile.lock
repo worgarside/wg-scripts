@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "376c70bd6218c0ee6217b957fa509c6dc445dd161217fc773e93c22d784f6fd8"
+            "sha256": "3e4ff9176dc96c9b32f8845087f44bd069537e5685f44fe67746c1057af7b1a9"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -101,6 +101,21 @@
             ],
             "index": "pypi",
             "version": "==1.4.0"
+        },
+        "psutil": {
+            "hashes": [
+                "sha256:5ce6b5eb0267233459f4d3980c205828482f450999b8f5b684d9629fea98782a",
+                "sha256:72cebfaa422b7978a1d3632b65ff734a34c6b34f4578b68a5c204d633756b810",
+                "sha256:77c231b4dff8c1c329a4cd1c22b96c8976c597017ff5b09993cd148d6a94500c",
+                "sha256:8846ab0be0cdccd6cc92ecd1246a16e2f2e49f53bd73e522c3a75ac291e1b51d",
+                "sha256:a013b4250ccbddc9d22feca0f986a1afc71717ad026c0f2109bbffd007351191",
+                "sha256:ad43b83119eeea6d5751023298cd331637e542cbd332196464799e25a5519f8f",
+                "sha256:c177777c787d247d02dae6c855330f9ed3e1abf8ca1744c26dd5ff968949999a",
+                "sha256:ec1ef313530a9457e48d25e3fdb1723dfa636008bf1b970027462d46f2555d59",
+                "sha256:ef3e5e02b3c5d1df366abe7b4820400d5c427579668ad4465ff189d28ded5ebd"
+            ],
+            "index": "pypi",
+            "version": "==5.5.1"
         },
         "psycopg2-binary": {
             "hashes": [

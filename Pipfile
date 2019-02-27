@@ -10,6 +10,7 @@ wg-utilities = "*"
 python-dotenv = "*"
 psycopg2-binary = "*"
 paho-mqtt = "*"
+psutil = "*"
 
 [dev-packages]
 
