@@ -16,18 +16,7 @@ load_dotenv(ENV_FILE)
 
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 MQTT_STATS_TOPIC = f'/homeassistant/{gethostname()}/stats'
-MQTT_FAN_TOPIC = f'/homeassistant/{gethostname()}/fan'
 MIN_CPU_TEMP_THRESHOLD = float(getenv('MIN_CPU_TEMP_THRESHOLD', -999))
-
-
-def setup_mqtt_fan():
-    def on_connect(client, userdata, flags, rc):
-        client.subscribe(MQTT_FAN_TOPIC)
-
-    temp_client = Client()
-    temp_client.on_connect = on_connect
-    temp_client.connect(MQTT_BROKER_HOST, 1883, 60)
-    return temp_client
 
 
 def control_fan(temp, pin_out):
@@ -40,9 +29,6 @@ def control_fan(temp, pin_out):
     pi.set_mode(pin_out, OUTPUT)
     pi.write(pin_out, temp > MIN_CPU_TEMP_THRESHOLD)
     pi.stop()
-
-    mqtt_client = setup_mqtt_fan()
-    mqtt_client.publish(MQTT_FAN_TOPIC, payload=50 if temp > MIN_CPU_TEMP_THRESHOLD else 0)
 
 
 def get_cpu_temp():
