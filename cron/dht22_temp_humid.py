@@ -38,8 +38,8 @@ def main():
     s = DHT22.Sensor(pi(), DHT22_GPIO)
     s.trigger()
     sleep(2)  # DO NOT REMOVE - the sensor needs this delay to read the values
-    temp = round(s.temperature(), 2)
-    rhum = round(s.humidity(), 2)
+    temp = round(s.temperature(), 2) if s.temperature() > -273 else None
+    rhum = round(s.humidity(), 2) if s.humidity() > 0 else None
     mqtt_client.publish(MQTT_TOPIC, payload=dumps({'temperature': temp, 'humidity': rhum}))
 
 
