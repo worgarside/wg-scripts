@@ -15,8 +15,7 @@ PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), 
 load_dotenv(ENV_FILE)
 
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
-MQTT_TOPIC = f'/homeassistant/{gethostname()}/stats'
-
+MQTT_STATS_TOPIC = f'/homeassistant/{gethostname()}/stats'
 MIN_CPU_TEMP_THRESHOLD = float(getenv('MIN_CPU_TEMP_THRESHOLD', -999))
 
 
@@ -38,11 +37,10 @@ def get_cpu_temp():
     return temp
 
 
-def on_connect(client, userdata, flags, rc):
-    client.subscribe(MQTT_TOPIC)
+def setup_mqtt_stats():
+    def on_connect(client, userdata, flags, rc):
+        client.subscribe(MQTT_STATS_TOPIC)
 
-
-def setup_mqtt():
     temp_client = Client()
     temp_client.on_connect = on_connect
     temp_client.connect(MQTT_BROKER_HOST, 1883, 60)
@@ -66,17 +64,17 @@ def get_load_15m():
 
 
 def main():
-    mqtt_client = setup_mqtt()
+    mqtt_client = setup_mqtt_stats()
 
     stats = {
-        'temperature': get_cpu_temp(),
-        'disk_usage_percent': get_disk_usage_percent(),
-        'memory_usage': get_memory_usage(),
         'cpu_usage': get_cpu_usage(),
-        'load_15m': get_load_15m()
+        'memory_usage': get_memory_usage(),
+        'load_15m': get_load_15m(),
+        'temperature': get_cpu_temp(),
+        'disk_usage_percent': get_disk_usage_percent()
     }
 
-    mqtt_client.publish(MQTT_TOPIC, payload=dumps(stats))
+    mqtt_client.publish(MQTT_STATS_TOPIC, payload=dumps(stats))
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from wg_utilities.helpers.functions import get_proj_dirs, pb_notify, output, exponential_backoff
+from wg_utilities.helpers.functions import get_proj_dirs, pb_notify, exponential_backoff
 from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME
 
 PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
@@ -25,6 +25,17 @@ TIMELAPSE_DIR = '/home/pi/.octoprint/timelapse/'
 API_SERVICE_NAME = 'youtube'
 API_VERSION = 'v3'
 MAX_RETRIES = 10
+
+
+def output(m: str = ''):
+    # TODO import from wg-utilities
+    from sys import stdout
+    try:
+        print(m)
+        stdout.flush()
+        pb_notify(m=m, **PB_PARAMS)
+    except Exception as e:
+        print(e)
 
 
 def _get_client():
@@ -90,55 +101,52 @@ def initialize_upload(yt_client, video_file, metadata):
 
 
 def main(**kwargs):
-    pass
+    printed_file = kwargs['file'].replace('.gcode', '') if 'file' in kwargs else None
 
-    # printed_file = kwargs['file'].replace('.gcode', '') if 'file' in kwargs else None
-    #
-    # if not printed_file:
-    #     pb_notify(m='File not in kwargs', **PB_PARAMS)
-    #
-    # pb_notify(m=f'{printed_file} successfully printed. Upload pending.', **PB_PARAMS)
-    #
-    # matched_timelapses = None
-    # retry = 0
-    # while not matched_timelapses:
-    #     retry += 1
-    #     if retry > MAX_RETRIES:
-    #         pb_notify('Too many retries', **PB_PARAMS)
-    #         exit()
-    #         # TODO graceful exit
-    #     pb_notify(m='Sleeping...', **PB_PARAMS)
-    #     sleep(10)
-    #     matched_timelapses = [file for file in listdir(TIMELAPSE_DIR) if printed_file in file]
-    #
-    # latest_timelapse_file = sorted(matched_timelapses, key=lambda x: x[-18:-4])[-1] \
-    #     if len(matched_timelapses) > 1 else matched_timelapses[0]
-    #
-    # timelapse_date = strptime(latest_timelapse_file[-18:-4], '%Y%m%d%H%M%S')
-    #
-    # hours_since_timelapse = (time() - mktime(timelapse_date)) / 3600
-    #
-    # if hours_since_timelapse > 1.5:
-    #     pb_notify('Too long since timelapse, might be an older one?', **PB_PARAMS)
-    #     exit()
-    #     #  TODO: exit gracefully, think about timing
-    #
-    # metadata = {
-    #     'video_title': '{} on Prusa Mk3 | {}'.format(latest_timelapse_file[:-19].replace('_', ' ').title(),
-    #                                                  strftime('%H:%M %d/%m/%Y', timelapse_date))
-    # }
-    #
-    # while True:
-    #     try:
-    #         metadata['description'] = 'Filmed with Octolapse on a Pi Camera v2. ' \
-    #                                   'Automatically uploaded post-render through custom scripts.'
-    #         metadata['privacy_status'] = 'unlisted'
-    #
-    #         initialize_upload(_get_client(), TIMELAPSE_DIR + latest_timelapse_file, metadata)
-    #     except Exception as e:
-    #         output(str(e))
-    #     # sleep(1800)
+    if not printed_file:
+        pb_notify(m='File not in kwargs', **PB_PARAMS)
 
+    pb_notify(m=f'{printed_file} successfully printed. Upload pending.', **PB_PARAMS)
+
+    matched_timelapses = None
+    retry = 0
+    while not matched_timelapses:
+        retry += 1
+        if retry > MAX_RETRIES:
+            pb_notify('Too many retries', **PB_PARAMS)
+            exit()
+            # TODO graceful exit
+        pb_notify(m='Sleeping...', **PB_PARAMS)
+        sleep(10)
+        matched_timelapses = [file for file in listdir(TIMELAPSE_DIR) if printed_file in file]
+
+    latest_timelapse_file = sorted(matched_timelapses, key=lambda x: x[-18:-4])[-1] \
+        if len(matched_timelapses) > 1 else matched_timelapses[0]
+
+    timelapse_date = strptime(latest_timelapse_file[-18:-4], '%Y%m%d%H%M%S')
+
+    hours_since_timelapse = (time() - mktime(timelapse_date)) / 3600
+
+    if hours_since_timelapse > 1.5:
+        pb_notify('Too long since timelapse, might be an older one?', **PB_PARAMS)
+        exit()
+        #  TODO: exit gracefully, think about timing
+
+    metadata = {
+        'video_title': '{} on Prusa Mk3 | {}'.format(latest_timelapse_file[:-19].replace('_', ' ').title(),
+                                                     strftime('%H:%M %d/%m/%Y', timelapse_date))
+    }
+
+    try:
+        metadata['description'] = 'Filmed with Octolapse on a Pi Camera v2. ' \
+                                  'Automatically uploaded post-render through custom scripts.'
+        metadata['privacy_status'] = 'unlisted'
+
+        initialize_upload(_get_client(), TIMELAPSE_DIR + latest_timelapse_file, metadata)
+    except Exception as e:
+        output(str(e))
+    # sleep(1800)
+#
 
 def user_help():
     """
