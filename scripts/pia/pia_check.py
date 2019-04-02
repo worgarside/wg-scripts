@@ -45,11 +45,6 @@ def check_status():
     return WARNING not in str(ip_box)
 
 
-def kill_deluge():
-    stop_process_cmds = 'sudo pkill deluge'.split()
-    Popen(stop_process_cmds, stdout=PIPE)
-
-
 def main():
     retry = 0
     notified = False
@@ -68,9 +63,12 @@ def main():
             pb_notify(m=f"PIA successfully restarted with {retry} attempt{'s' if retry > 1 else ''}.", **PB_PARAMS)
             exit()
 
-    if not check_status():
+    if check_status():
+        print('PIA Connected. Starting Deluge daemon.')
+        Popen('deluged'.split(), stdout=PIPE)
+    else:
         pb_notify(m='Unable to restart PIA. Stopping deluge.', **PB_PARAMS)
-        kill_deluge()
+        Popen('sudo pkill deluge'.split(), stdout=PIPE)
 
 
 if __name__ == '__main__':
