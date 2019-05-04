@@ -3,7 +3,7 @@ from os import popen, path, getenv, getloadavg
 from pprint import pprint
 from socket import gethostname
 from warnings import warn
-
+from time import sleep
 from dotenv import load_dotenv
 from paho.mqtt.client import Client
 from pigpio import pi as rasp_pi, OUTPUT
@@ -19,22 +19,41 @@ MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 MQTT_STATS_TOPIC = f'/homeassistant/{gethostname()}/stats'
 MIN_CPU_TEMP_THRESHOLD = float(getenv('MIN_CPU_TEMP_THRESHOLD', -999))
 
+FAN_GPIO = int(getenv('PI_FAN_GPIO', -999))
+PWN_PINS = [12, 13, 18]
+ABS_MAX_CPU_TEMP = 70
 
-def control_fan(temp, pin_out):
-    for k, v in {'MIN_CPU_TEMP_THRESHOLD': MIN_CPU_TEMP_THRESHOLD, 'PIN_OUT': pin_out}.items():
+
+def control_fan(temp):
+    for k, v in {'MIN_CPU_TEMP_THRESHOLD': MIN_CPU_TEMP_THRESHOLD, 'PIN_OUT': FAN_GPIO}.items():
         if v == -999:
             warn("ENV VAR '{}' not set. Not controlling fan.".format(k))
             return
 
     pi = rasp_pi()
-    pi.set_mode(pin_out, OUTPUT)
-    pi.write(pin_out, temp > MIN_CPU_TEMP_THRESHOLD)
+    pi.set_mode(FAN_GPIO, OUTPUT)
+
+    if FAN_GPIO not in PWN_PINS or temp > ABS_MAX_CPU_TEMP:
+        pi.write(FAN_GPIO, temp > MIN_CPU_TEMP_THRESHOLD)
+    elif temp > MIN_CPU_TEMP_THRESHOLD:
+        percentage_in_threshold_range = (temp - MIN_CPU_TEMP_THRESHOLD) / (ABS_MAX_CPU_TEMP - MIN_CPU_TEMP_THRESHOLD)
+        duty_cycle = percentage_in_threshold_range * 255 * 1.25
+
+        if duty_cycle < 255 * 0.5:
+            duty_cycle = 255 * 0.5
+        elif duty_cycle > 255:
+            duty_cycle = 255
+
+        pi.set_PWM_dutycycle(FAN_GPIO, duty_cycle)
+    else:
+        pi.write(FAN_GPIO, False)
+
     pi.stop()
 
 
 def get_cpu_temp():
     temp = float(popen('vcgencmd measure_temp').readline().replace('temp=', '').replace("'C", ''))
-    control_fan(temp, int(getenv('PI_FAN_GPIO', -999)))
+    control_fan(temp)
     return temp
 
 
