@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # This is to import all scripts exported by the __init__.py script - DO NOT REMOVE
 # noinspection PyUnresolvedReferences
-from lib import *
+from scripts import *
 from argparse import ArgumentParser
 from math import ceil
 from textwrap import wrap
@@ -45,7 +45,7 @@ def get_modules():
     if not current_file_loc:
         current_file_loc = '\\'.join(__file__.split('\\')[:-1])
 
-    lib_loc = f'{current_file_loc}/lib'
+    lib_loc = f'{current_file_loc}/scripts'
 
     for root, dirs, _ in walk(lib_loc, 1):
         for sub_dir in dirs:
