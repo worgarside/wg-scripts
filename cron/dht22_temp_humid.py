@@ -1,6 +1,7 @@
 from importlib.util import spec_from_file_location, module_from_spec
 from json import dumps
 from os import getenv, path
+from pprint import pprint
 from time import sleep
 
 from dotenv import load_dotenv
@@ -34,13 +35,24 @@ def setup_mqtt():
 
 
 def main():
-    mqtt_client = setup_mqtt()
+    try:
+        mqtt_client = setup_mqtt()
+        mqtt_connected = True
+    except OSError:
+        mqtt_connected = False
+
     s = DHT22.Sensor(pi(), DHT22_GPIO)
     s.trigger()
     sleep(2)  # DO NOT REMOVE - the sensor needs this delay to read the values
     temp = round(s.temperature(), 2) if s.temperature() > -273 else None
     rhum = round(s.humidity(), 2) if s.humidity() > 0 else None
-    mqtt_client.publish(MQTT_TOPIC, payload=dumps({'temperature': temp, 'humidity': rhum}))
+
+    payload = {'temperature': temp, 'humidity': rhum}
+
+    if mqtt_connected:
+        mqtt_client.publish(MQTT_TOPIC, payload=dumps(payload))
+
+    pprint(payload)
 
 
 if __name__ == '__main__':

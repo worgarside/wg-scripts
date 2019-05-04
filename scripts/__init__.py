@@ -31,7 +31,7 @@ def get_modules():
                 for _, _, files in walk(path.join(root, sub_dir), 0):
                     for file in files:
                         if file.split('.')[-1] == 'py' and not file == '__init__.py':
-                            exportable_modules.append('lib.%s.%s' % (sub_dir, file[:-3]))
+                            exportable_modules.append('scripts.%s.%s' % (sub_dir, file[:-3]))
 
     return exportable_modules
 

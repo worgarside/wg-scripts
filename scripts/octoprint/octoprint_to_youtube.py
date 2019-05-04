@@ -2,13 +2,15 @@ from json import dump, load
 from os import getenv, path
 from time import strptime, strftime, mktime, time, sleep
 from os import listdir
+from traceback import format_exc
 
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from wg_utilities.helpers.functions import get_proj_dirs, pb_notify, exponential_backoff
+from wg_utilities.helpers.functions import get_proj_dirs, exponential_backoff
 from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME
+from wg_utilities.services.services import pb_notify
 
 PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
 
@@ -33,7 +35,7 @@ def output(m: str = ''):
     try:
         print(m)
         stdout.flush()
-        pb_notify(m=m, **PB_PARAMS)
+        # pb_notify(m=m, **PB_PARAMS)
     except Exception as e:
         print(e)
 
@@ -113,10 +115,9 @@ def main(**kwargs):
     while not matched_timelapses:
         retry += 1
         if retry > MAX_RETRIES:
-            pb_notify('Too many retries', **PB_PARAMS)
+            pb_notify(f'No timelapse found for {printed_file}', **PB_PARAMS)
             exit()
             # TODO graceful exit
-        pb_notify(m='Sleeping...', **PB_PARAMS)
         sleep(10)
         matched_timelapses = [file for file in listdir(TIMELAPSE_DIR) if printed_file in file]
 
@@ -144,7 +145,8 @@ def main(**kwargs):
 
         initialize_upload(_get_client(), TIMELAPSE_DIR + latest_timelapse_file, metadata)
     except Exception as e:
-        output(str(e))
+        output(format_exc())
+        print(e)
     # sleep(1800)
 #
 
