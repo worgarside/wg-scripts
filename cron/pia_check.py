@@ -5,8 +5,9 @@ from time import sleep
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from requests import get
-from wg_utilities.helpers.functions import pb_notify, get_proj_dirs
+from wg_utilities.helpers.functions import get_proj_dirs
 from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME, BS4_PARSER
+from wg_utilities.services.services import pb_notify
 
 PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
 
@@ -45,11 +46,6 @@ def check_status():
     return WARNING not in str(ip_box)
 
 
-def kill_deluge():
-    stop_process_cmds = 'sudo pkill deluge'.split()
-    Popen(stop_process_cmds, stdout=PIPE)
-
-
 def main():
     retry = 0
     notified = False
@@ -68,9 +64,12 @@ def main():
             pb_notify(m=f"PIA successfully restarted with {retry} attempt{'s' if retry > 1 else ''}.", **PB_PARAMS)
             exit()
 
-    if not check_status():
+    if check_status():
+        print('PIA Connected. Starting Deluge daemon.')
+        Popen('deluged'.split(), stdout=PIPE)
+    else:
         pb_notify(m='Unable to restart PIA. Stopping deluge.', **PB_PARAMS)
-        kill_deluge()
+        Popen('sudo pkill deluge'.split(), stdout=PIPE)
 
 
 if __name__ == '__main__':

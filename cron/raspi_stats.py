@@ -1,5 +1,6 @@
 from json import dumps
 from os import popen, path, getenv, getloadavg
+from pprint import pprint
 from socket import gethostname
 from warnings import warn
 
@@ -64,7 +65,11 @@ def get_load_15m():
 
 
 def main():
-    mqtt_client = setup_mqtt_stats()
+    try:
+        mqtt_client = setup_mqtt_stats()
+        mqtt_connected = True
+    except OSError:
+        mqtt_connected = False
 
     stats = {
         'cpu_usage': get_cpu_usage(),
@@ -74,7 +79,10 @@ def main():
         'disk_usage_percent': get_disk_usage_percent()
     }
 
-    mqtt_client.publish(MQTT_STATS_TOPIC, payload=dumps(stats))
+    if mqtt_connected:
+        mqtt_client.publish(MQTT_STATS_TOPIC, payload=dumps(stats))
+
+    pprint(stats)
 
 
 if __name__ == '__main__':

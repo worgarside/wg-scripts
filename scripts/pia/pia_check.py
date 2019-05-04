@@ -5,8 +5,9 @@ from time import sleep
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from requests import get
-from wg_utilities.helpers.functions import pb_notify, get_proj_dirs
+from wg_utilities.helpers.functions import get_proj_dirs
 from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME, BS4_PARSER
+from wg_utilities.services.services import pb_notify
 
 PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
 
