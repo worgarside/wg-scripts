@@ -8,8 +8,9 @@ from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from wg_utilities.helpers.functions import get_proj_dirs, pb_notify, exponential_backoff
+from wg_utilities.helpers.functions import get_proj_dirs, exponential_backoff
 from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME
+from wg_utilities.services.services import pb_notify
 
 PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
 
