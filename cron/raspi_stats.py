@@ -3,7 +3,7 @@ from os import popen, path, getenv, getloadavg
 from pprint import pprint
 from socket import gethostname
 from warnings import warn
-from time import sleep
+
 from dotenv import load_dotenv
 from paho.mqtt.client import Client
 from pigpio import pi as rasp_pi, OUTPUT
@@ -18,6 +18,8 @@ load_dotenv(ENV_FILE)
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 MQTT_STATS_TOPIC = f'/homeassistant/{gethostname()}/stats'
 MIN_CPU_TEMP_THRESHOLD = float(getenv('MIN_CPU_TEMP_THRESHOLD', -999))
+MQTT_USERNAME = getenv('MQTT_USERNAME')
+MQTT_PASSWORD = getenv('MQTT_PASSWORD')
 
 FAN_GPIO = int(getenv('PI_FAN_GPIO', -999))
 PWN_PINS = [12, 13, 18]
@@ -62,6 +64,7 @@ def setup_mqtt_stats():
         client.subscribe(MQTT_STATS_TOPIC)
 
     temp_client = Client()
+    temp_client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
     temp_client.on_connect = on_connect
     temp_client.connect(MQTT_BROKER_HOST, 1883, 60)
     return temp_client
@@ -89,6 +92,7 @@ def main():
         mqtt_connected = True
     except OSError:
         mqtt_connected = False
+        print('Unable to connect to MQTT broker')
 
     stats = {
         'cpu_usage': get_cpu_usage(),
