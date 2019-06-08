@@ -17,6 +17,8 @@ load_dotenv(ENV_FILE)
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 DHT22_GPIO = int(getenv('DHT22_GPIO', '-1'))
 MQTT_TOPIC = '/homeassistant/prusamk3/dht22'
+MQTT_USERNAME = getenv('MQTT_USERNAME')
+MQTT_PASSWORD = getenv('MQTT_PASSWORD')
 
 spec = spec_from_file_location('dht22', '{}utilities/dht22.py'.format(PROJECT_DIR))
 DHT22 = module_from_spec(spec)
@@ -29,6 +31,7 @@ def on_connect(client, userdata, flags, rc):
 
 def setup_mqtt():
     temp_client = Client()
+    temp_client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
     temp_client.on_connect = on_connect
     temp_client.connect(MQTT_BROKER_HOST, 1883, 60)
     return temp_client
