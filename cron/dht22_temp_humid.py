@@ -20,12 +20,12 @@ MQTT_TOPIC = '/homeassistant/prusamk3/dht22'
 MQTT_USERNAME = getenv('MQTT_USERNAME')
 MQTT_PASSWORD = getenv('MQTT_PASSWORD')
 
-spec = spec_from_file_location('dht22', '{}utilities/dht22.py'.format(PROJECT_DIR))
-DHT22 = module_from_spec(spec)
-spec.loader.exec_module(DHT22)
+SPEC = spec_from_file_location('dht22', '{}utilities/dht22.py'.format(PROJECT_DIR))
+DHT22 = module_from_spec(SPEC)
+SPEC.loader.exec_module(DHT22)
 
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, *args):
     client.subscribe(MQTT_TOPIC)
 
 
@@ -44,11 +44,11 @@ def main():
     except OSError:
         mqtt_connected = False
 
-    s = DHT22.Sensor(pi(), DHT22_GPIO)
-    s.trigger()
+    sensor = DHT22.Sensor(pi(), DHT22_GPIO)
+    sensor.trigger()
     sleep(2)  # DO NOT REMOVE - the sensor needs this delay to read the values
-    temp = round(s.temperature(), 2) if s.temperature() > -273 else None
-    rhum = round(s.humidity(), 2) if s.humidity() > 0 else None
+    temp = round(sensor.temperature(), 2) if sensor.temperature() > -273 else None
+    rhum = round(sensor.humidity(), 2) if sensor.humidity() > 0 else None
 
     payload = {'temperature': temp, 'humidity': rhum}
 

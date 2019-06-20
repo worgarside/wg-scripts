@@ -12,6 +12,8 @@ psycopg2-binary = "*"
 paho-mqtt = "*"
 psutil = "*"
 google-auth-oauthlib = "*"
+pigpio = "*"
+pylint = "*"
 
 [dev-packages]
 

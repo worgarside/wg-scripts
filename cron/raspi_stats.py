@@ -17,11 +17,11 @@ load_dotenv(ENV_FILE)
 
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 MQTT_STATS_TOPIC = f'/homeassistant/{gethostname()}/stats'
-MIN_CPU_TEMP_THRESHOLD = float(getenv('MIN_CPU_TEMP_THRESHOLD', -999))
+MIN_CPU_TEMP_THRESHOLD = float(getenv('MIN_CPU_TEMP_THRESHOLD', '-999'))
 MQTT_USERNAME = getenv('MQTT_USERNAME')
 MQTT_PASSWORD = getenv('MQTT_PASSWORD')
 
-FAN_GPIO = int(getenv('PI_FAN_GPIO', -999))
+FAN_GPIO = int(getenv('PI_FAN_GPIO', '-999'))
 PWN_PINS = [12, 13, 18]
 ABS_MAX_CPU_TEMP = 70
 
@@ -60,7 +60,7 @@ def get_cpu_temp():
 
 
 def setup_mqtt_stats():
-    def on_connect(client, userdata, flags, rc):
+    def on_connect(client, *args):
         client.subscribe(MQTT_STATS_TOPIC)
 
     temp_client = Client()
