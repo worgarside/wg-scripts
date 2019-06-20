@@ -2,8 +2,9 @@ from os import getenv, path
 
 from dotenv import load_dotenv
 from requests import get
-from wg_utilities.helpers.functions import get_proj_dirs, pb_notify
+from wg_utilities.helpers.functions import get_proj_dirs
 from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME
+from wg_utilities.services.services import pb_notify
 
 _, _, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
 
@@ -21,11 +22,13 @@ def main():
     try:
         req = get('http://serveo.net', timeout=10)
         if not req.status_code == 200:
-            message = f"serveo.net currently unresponsive. {f'Response code: {req.status_code}' if req.status_code else 'No response returned.'}"
+            message = f"serveo.net currently unresponsive. " \
+                f"{f'Response code: {req.status_code}' if req.status_code else 'No response returned.'}"
             print(message)
             pb_notify(m=message, **PB_PARAMS)
     except Exception:
-        message = f"serveo.net currently unresponsive. {f'Response code: {req.status_code}' if req.status_code else 'No response returned.'}"
+        message = f"serveo.net currently unresponsive. " \
+            f"{f'Response code: {req.status_code}' if req.status_code else 'No response returned.'}"
         print(message)
         pb_notify(m=message, **PB_PARAMS)
         raise

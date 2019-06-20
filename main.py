@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # This is to import all scripts exported by the __init__.py script - DO NOT REMOVE
-# noinspection PyUnresolvedReferences
-from scripts import *
 from argparse import ArgumentParser
 from math import ceil
-from textwrap import wrap
 from os import listdir, path, system, name, environ, getcwd
+from textwrap import wrap
+
+# noinspection PyUnresolvedReferences
+from scripts import *
 
 try:
     with open(f'{getcwd()}/.env', 'r') as env_file:

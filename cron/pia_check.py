@@ -1,3 +1,4 @@
+from datetime import datetime
 from os import path, getenv
 from subprocess import Popen, PIPE
 from time import sleep
@@ -50,6 +51,7 @@ def main():
     retry = 0
     notified = False
     while not check_status() and retry < MAX_VPN_ATTEMPTS:
+        print(f'Check #{retry}')
         notified = pb_notify(m='PIA not running, starting restart process', **PB_PARAMS) if not notified else notified
 
         if not path.isfile(PIA_CONFIG):
@@ -65,12 +67,13 @@ def main():
             exit()
 
     if check_status():
-        print('PIA Connected. Starting Deluge daemon.')
-        Popen('deluged'.split(), stdout=PIPE)
+        print('PIA already connected.')
+        # Popen('deluged'.split(), stdout=PIPE)
     else:
         pb_notify(m='Unable to restart PIA. Stopping deluge.', **PB_PARAMS)
         Popen('sudo pkill deluge'.split(), stdout=PIPE)
 
 
 if __name__ == '__main__':
+    print('\n\n\n', '-' * 100, '\n', datetime.now())
     main()
