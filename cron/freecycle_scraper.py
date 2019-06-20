@@ -4,8 +4,9 @@ from pickle import load, dump
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from requests import get
-from wg_utilities.helpers.functions import get_proj_dirs, pb_notify
+from wg_utilities.helpers.functions import get_proj_dirs
 from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME, BS4_PARSER
+from wg_utilities.services.services import pb_notify
 
 PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
 PKL_FILE = '{}freecycle_links.pkl'.format(SECRET_FILES_DIR)
@@ -40,7 +41,7 @@ def main():
         rows = table.findAll('tr')
 
         for item in rows:
-            item_link_set = set([a['href'] for a in item.findAll('a', href=True)])
+            item_link_set = set(a['href'] for a in item.findAll('a', href=True))
 
             if not len(item_link_set) == 1:
                 pb_notify(m=f'Number of links in row {item} != 1: {len(item_link_set)}', **PB_PARAMS)
@@ -55,9 +56,9 @@ def main():
             item_details = BeautifulSoup(get(item_link).content, BS4_PARSER).find('div', {'id': 'group_post'})
 
             item_title = ''
-            for h2 in item_details.findAll('h2'):
-                if 'offer' in h2.text.lower():
-                    item_title = h2.text.lower().replace('offer:', '')
+            for heading in item_details.findAll('h2'):
+                if 'offer' in heading.text.lower():
+                    item_title = heading.text.lower().replace('offer:', '')
                     break
 
             item_desc = [p.text for p in item_details.findAll('p')]
