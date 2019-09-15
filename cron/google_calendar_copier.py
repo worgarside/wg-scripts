@@ -87,11 +87,16 @@ def create_event(event, service=None, calendar=None):
 
 
 def event_in_list(target_event, event_list):
-    match_keys = ['description', 'end', 'location', 'start', 'summary']
+    match_keys = ['end', 'start', 'summary']
+
     for e in event_list:
+        matched = True
         for k in match_keys:
-            if k in e and k in target_event and e[k] == target_event[k]:
-                return True
+            if not e[k] == target_event[k]:
+                matched = False
+                break
+        if matched:
+            return True
 
     return False
 
@@ -131,4 +136,5 @@ def main():
 
 
 if __name__ == '__main__':
+    print(f"\n\n----------------------------------\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     main()
