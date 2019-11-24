@@ -14,6 +14,8 @@ psutil = "*"
 google-auth-oauthlib = "*"
 pigpio = "*"
 pylint = "*"
+paramiko = "*"
+python-systemd = "*"
 
 [dev-packages]
 
