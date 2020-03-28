@@ -57,7 +57,8 @@ def control_fan(temp):
 
 def get_cpu_temp():
     temp = float(popen('vcgencmd measure_temp').readline().replace('temp=', '').replace("'C", ''))
-    control_fan(temp)
+    if gethostname() == 'octopi':
+        control_fan(temp)
     return temp
 
 
@@ -84,9 +85,6 @@ def get_cpu_usage():
     return round(cpu_percent(interval=None))
 
 
-def get_load_15m():
-    return getloadavg()[2]
-
 def pb_notify(m, t):
     post(
         'https://api.pushbullet.com/v2/pushes',
@@ -106,25 +104,36 @@ def main():
 
     while True:
         try:
+
             stats = {
                 'cpu_usage': get_cpu_usage(),
                 'memory_usage': get_memory_usage(),
-                'load_15m': get_load_15m(),
                 'temperature': get_cpu_temp(),
                 'disk_usage_percent': get_disk_usage_percent()
             }
 
+            load_1m, load_5m, load_15m = getloadavg()
+
+            stats.update({
+                'load_1m': load_1m,
+                'load_5m': load_5m,
+                'load_15m': load_15m,
+            })
+
+            if datetime.now().minute % 15 == 0:
+                del mqtt_client
+
+                mqtt_client = setup_mqtt_stats()
+
             mqtt_client.publish(MQTT_STATS_TOPIC, payload=dumps(stats))
 
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-            print(dumps(stats))
             sleep(60)
         except Exception as e:
+            del mqtt_client
+
             mqtt_client = setup_mqtt_stats()
-            pb_notify(
-                m=e.__repr__(),
-                t='CRT Pi Stats'
-            )
+
+            print(type(e).__name__, e.__str__())
 
 
 
