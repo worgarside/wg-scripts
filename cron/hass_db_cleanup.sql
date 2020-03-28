@@ -1,5 +1,13 @@
 DELETE
 FROM states
 WHERE state = 'unknown'
-   OR (entity_id = 'sensor.battery_sheena' AND state = '0')
-   OR (entity_id = 'sensor.battery_will' AND state = '0');
+   OR (
+        state = '0' AND entity_id IN (
+                                      'sensor.battery_will',
+                                      'sensor.coinbase_bat_wallet_gbp_value',
+                                      'sensor.coinbase_eos_wallet_gbp_value',
+                                      'sensor.coinbase_xlm_wallet_gbp_value',
+                                      'sensor.coinbase_dai_wallet_gbp_value',
+                                      'sensor.coinbase_portfolio_value'
+        )
+    );
