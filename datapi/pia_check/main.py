@@ -1,18 +1,17 @@
 from datetime import datetime
-from os import path, getenv
+from os import path, getenv, sep
 from subprocess import Popen, PIPE
-from time import sleep
 
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from requests import get
-from wg_utilities.helpers.functions import get_proj_dirs
-from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME, BS4_PARSER
+from time import sleep
+from wg_utilities.references.constants import BS4_PARSER
 from wg_utilities.services.services import pb_notify
 
-PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
+PROJECT_ROOT = sep.join(path.abspath(path.dirname(__file__)).split(sep)[:-2])
 
-load_dotenv(ENV_FILE)
+load_dotenv(sep.join([PROJECT_ROOT, '.env']))
 
 PIA_URL = 'https://www.privateinternetaccess.com/pages/whats-my-ip/'
 WARNING = 'Your private information is exposed'

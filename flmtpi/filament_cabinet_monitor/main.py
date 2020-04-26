@@ -14,16 +14,18 @@ from paho.mqtt.client import Client
 from pigpio import pi
 from time import sleep
 
-load_dotenv(sep.join([*path.abspath(path.dirname(__file__)).split(sep)[:-3], 'secret_files', '.env']))
+PROJECT_ROOT = sep.join(path.abspath(path.dirname(__file__)).split(sep)[:-2])
+
+load_dotenv(sep.join([PROJECT_ROOT, '.env']))
 
 DHT22_GPIO = 17
-SPEC = spec_from_file_location('dht22', f"{'/'.join(path.abspath(__file__).split('/')[:-1])}/dht22_lib.py")
+SPEC = spec_from_file_location('dht22', sep.join([PROJECT_ROOT, 'utilities', 'dht22_lib.py']))
 DHT22 = module_from_spec(SPEC)
 SPEC.loader.exec_module(DHT22)
 
 MQTT_TOPIC = '/homeassistant/flmtpi/dht22'
-MQTT_USERNAME = getenv('MQTT_USERNAME')
-MQTT_PASSWORD = getenv('MQTT_PASSWORD')
+MQTT_USERNAME = getenv('HASS_MQTT_USERNAME')
+MQTT_PASSWORD = getenv('HASS_MQTT_PASSWORD')
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 
 LINES = [
@@ -118,4 +120,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # print(sep.join([*path.abspath(path.dirname(__file__)).split(sep)[:-3], 'secret_files', '.env']))
