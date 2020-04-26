@@ -2,7 +2,6 @@ from datetime import datetime
 from importlib.util import spec_from_file_location, module_from_spec
 from json import dumps
 from os import getenv, path, sep
-from pprint import pprint
 
 from dotenv import load_dotenv
 from paho.mqtt.client import Client
