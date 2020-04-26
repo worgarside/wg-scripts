@@ -17,11 +17,11 @@ load_dotenv(sep.join([PROJECT_ROOT, '.env']))
 
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 MQTT_STATS_TOPIC = f'/homeassistant/{gethostname()}/stats'
-MIN_CPU_TEMP_THRESHOLD = float(getenv('MIN_CPU_TEMP_THRESHOLD', '-999'))
+MIN_CPU_TEMP_THRESHOLD = float(getenv('OCTOPI_MIN_CPU_TEMP_THRESHOLD', '-999'))
 MQTT_USERNAME = getenv('HASS_MQTT_USERNAME')
 MQTT_PASSWORD = getenv('HASS_MQTT_PASSWORD')
 
-FAN_GPIO = int(getenv('PI_FAN_GPIO', '-999'))
+FAN_GPIO = int(getenv('OCTOPI_FAN_GPIO', '-999'))
 PWN_PINS = [12, 13, 18]
 ABS_MAX_CPU_TEMP = 70
 
