@@ -1,26 +1,26 @@
 from importlib.util import spec_from_file_location, module_from_spec
-from json import dumps
+# from json import dumps
 from os import getenv, path
 from pprint import pprint
 from time import sleep
 
-from dotenv import load_dotenv
-from paho.mqtt.client import Client
+# from dotenv import load_dotenv
+# from paho.mqtt.client import Client
 from pigpio import pi
-from wg_utilities.helpers.functions import get_proj_dirs
-from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME
+# from wg_utilities.helpers.functions import get_proj_dirs
+# from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME
 
-PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
+# PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
+#
+# load_dotenv(ENV_FILE)
 
-load_dotenv(ENV_FILE)
+# MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
+DHT22_GPIO = 17  # int(getenv('DHT22_GPIO', '-1'))
+# MQTT_TOPIC = '/homeassistant/flmtpi/dht22'
+# MQTT_USERNAME = getenv('MQTT_USERNAME')
+# MQTT_PASSWORD = getenv('MQTT_PASSWORD')
 
-MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
-DHT22_GPIO = int(getenv('DHT22_GPIO', '-1'))
-MQTT_TOPIC = '/homeassistant/prusamk3/dht22'
-MQTT_USERNAME = getenv('MQTT_USERNAME')
-MQTT_PASSWORD = getenv('MQTT_PASSWORD')
-
-SPEC = spec_from_file_location('dht22', '{}utilities/dht22.py'.format(PROJECT_DIR))
+SPEC = spec_from_file_location('dht22', f"{'/'.join(path.abspath(__file__).split('/')[:-1])}/dht22_lib.py")
 DHT22 = module_from_spec(SPEC)
 SPEC.loader.exec_module(DHT22)
 
@@ -52,11 +52,10 @@ def main():
 
     payload = {'temperature': temp, 'humidity': rhum}
 
-    if mqtt_connected:
-        mqtt_client.publish(MQTT_TOPIC, payload=dumps(payload))
+    # if mqtt_connected:
+    #     mqtt_client.publish(MQTT_TOPIC, payload=dumps(payload))
 
     pprint(payload)
-
 
 if __name__ == '__main__':
     main()
