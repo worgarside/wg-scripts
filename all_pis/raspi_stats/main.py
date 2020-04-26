@@ -1,8 +1,7 @@
 from datetime import datetime
 from json import dumps
-from os import popen, path, getenv, getloadavg
+from os import popen, path, getenv, getloadavg, sep
 from socket import gethostname
-from time import sleep
 from warnings import warn
 
 from dotenv import load_dotenv
@@ -10,20 +9,19 @@ from paho.mqtt.client import Client
 from pigpio import pi as rasp_pi, OUTPUT
 from psutil import disk_usage, virtual_memory, cpu_percent
 from requests import post
-from wg_utilities.helpers.functions import get_proj_dirs
-from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME
+from time import sleep
 
-PROJECT_DIR, SECRET_FILES_DIR, ENV_FILE = get_proj_dirs(path.abspath(__file__), PROJ_NAME)
+PROJECT_ROOT = sep.join(path.abspath(path.dirname(__file__)).split(sep)[:-2])
 
-load_dotenv(ENV_FILE)
+load_dotenv(sep.join([PROJECT_ROOT, '.env']))
 
 MQTT_BROKER_HOST = getenv('HASSPI_LOCAL_IP')
 MQTT_STATS_TOPIC = f'/homeassistant/{gethostname()}/stats'
-MIN_CPU_TEMP_THRESHOLD = float(getenv('MIN_CPU_TEMP_THRESHOLD', '-999'))
-MQTT_USERNAME = getenv('MQTT_USERNAME')
-MQTT_PASSWORD = getenv('MQTT_PASSWORD')
+MIN_CPU_TEMP_THRESHOLD = float(getenv('OCTOPI_MIN_CPU_TEMP_THRESHOLD', '-999'))
+MQTT_USERNAME = getenv('HASS_MQTT_USERNAME')
+MQTT_PASSWORD = getenv('HASS_MQTT_PASSWORD')
 
-FAN_GPIO = int(getenv('PI_FAN_GPIO', '-999'))
+FAN_GPIO = int(getenv('OCTOPI_FAN_GPIO', '-999'))
 PWN_PINS = [12, 13, 18]
 ABS_MAX_CPU_TEMP = 70
 
@@ -99,6 +97,7 @@ def pb_notify(m, t):
         }
     )
 
+
 def main():
     mqtt_client = setup_mqtt_stats()
 
@@ -134,7 +133,6 @@ def main():
             mqtt_client = setup_mqtt_stats()
 
             print(type(e).__name__, e.__str__())
-
 
 
 if __name__ == '__main__':
