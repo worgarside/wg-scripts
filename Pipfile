@@ -17,6 +17,7 @@ pylint = "*"
 paramiko = "*"
 python-systemd = "*"
 boto3 = "*"
+dot3k = "*"
 
 [dev-packages]
 
