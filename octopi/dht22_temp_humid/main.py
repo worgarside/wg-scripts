@@ -1,15 +1,13 @@
+from datetime import datetime
 from importlib.util import spec_from_file_location, module_from_spec
 from json import dumps
 from os import getenv, path, sep
 from pprint import pprint
-from time import sleep
 
 from dotenv import load_dotenv
 from paho.mqtt.client import Client
 from pigpio import pi
-from wg_utilities.helpers.functions import get_proj_dirs
-from wg_utilities.references.constants import WGSCRIPTS as PROJ_NAME
-
+from time import sleep
 
 PROJECT_ROOT = sep.join(path.abspath(path.dirname(__file__)).split(sep)[:-2])
 
@@ -46,17 +44,31 @@ def main():
         mqtt_connected = False
 
     sensor = DHT22.Sensor(pi(), DHT22_GPIO)
-    sensor.trigger()
-    sleep(2)  # DO NOT REMOVE - the sensor needs this delay to read the values
-    temp = round(sensor.temperature(), 2) if sensor.temperature() > -273 else None
-    rhum = round(sensor.humidity(), 2) if sensor.humidity() > 0 else None
 
-    payload = {'temperature': temp, 'humidity': rhum}
+    while True:
+        try:
 
-    if mqtt_connected:
-        mqtt_client.publish(MQTT_TOPIC, payload=dumps(payload))
+            sensor.trigger()
+            sleep(2)  # DO NOT REMOVE - the sensor needs this delay to read the values
+            temp = round(sensor.temperature(), 2) if sensor.temperature() > -273 else None
+            rhum = round(sensor.humidity(), 2) if sensor.humidity() > 0 else None
 
-    pprint(payload)
+            payload = {'temperature': temp, 'humidity': rhum}
+
+            if datetime.now().minute % 15 == 0:
+                del mqtt_client
+
+                mqtt_client = setup_mqtt()
+
+            if mqtt_connected:
+                mqtt_client.publish(MQTT_TOPIC, payload=dumps(payload))
+
+        except Exception as e:
+            del mqtt_client
+
+            mqtt_client = setup_mqtt()
+
+            print(type(e).__name__, e.__str__())
 
 
 if __name__ == '__main__':
