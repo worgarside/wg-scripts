@@ -37,6 +37,7 @@ def setup_mqtt():
 
 
 def main():
+    sleep(30)
     try:
         mqtt_client = setup_mqtt()
         mqtt_connected = True
@@ -62,7 +63,7 @@ def main():
 
             if mqtt_connected:
                 mqtt_client.publish(MQTT_TOPIC, payload=dumps(payload))
-
+            sleep(60)
         except Exception as e:
             del mqtt_client
 
