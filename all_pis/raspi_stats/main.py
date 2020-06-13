@@ -64,11 +64,14 @@ def setup_mqtt_stats():
     def on_connect(client, *args):
         client.subscribe(MQTT_STATS_TOPIC)
 
-    temp_client = Client()
-    temp_client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
-    temp_client.on_connect = on_connect
-    temp_client.connect(MQTT_BROKER_HOST, 1883, 60)
-    return temp_client
+    try:
+        temp_client = Client()
+        temp_client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
+        temp_client.on_connect = on_connect
+        temp_client.connect(MQTT_BROKER_HOST, 1883, 60)
+        return temp_client
+    except Exception:
+        return
 
 
 def get_disk_usage_percent():
@@ -99,7 +102,10 @@ def pb_notify(m, t):
 
 
 def main():
-    mqtt_client = setup_mqtt_stats()
+    mqtt_client = None
+    while mqtt_client is None:
+        mqtt_client = setup_mqtt_stats()
+        sleep(10)
 
     while True:
         try:

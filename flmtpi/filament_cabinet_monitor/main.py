@@ -97,38 +97,42 @@ def main():
         i = 0
         prev_dehum_state = None
         while True:
-            res = get(
-                f'http://{HASSPI_LOCAL_IP}:1880/endpoint/input_boolean/filament_cabinet_dehumidifier/state',
-                auth=(HASS_API_USERNAME, HASS_API_PASSWORD)
-            )
+            try:
+                res = get(
+                    f'http://{HASSPI_LOCAL_IP}:1880/endpoint/input_boolean/filament_cabinet_dehumidifier/state',
+                    auth=(HASS_API_USERNAME, HASS_API_PASSWORD)
+                )
 
-            dehum_state = res.content.decode().upper().ljust(4, ' ') if res.status_code == 200 else 'N/A'
+                dehum_state = res.content.decode().upper().ljust(4, ' ') if res.status_code == 200 else 'N/A'
 
-            if i % 60 == 0:
-                r.ChangeDutyCycle(sin(i + 0) * 50.0 + 50)
-                g.ChangeDutyCycle(sin(i + (2 * math_pi / 3)) * 50.0 + 50)
-                b.ChangeDutyCycle(sin(i + (4 * math_pi / 3)) * 50.0 + 50)
+                if i % 60 == 0:
+                    r.ChangeDutyCycle(sin(i + 0) * 50.0 + 50)
+                    g.ChangeDutyCycle(sin(i + (2 * math_pi / 3)) * 50.0 + 50)
+                    b.ChangeDutyCycle(sin(i + (4 * math_pi / 3)) * 50.0 + 50)
 
-                temp, rhum = get_readings(sensor)
+                    temp, rhum = get_readings(sensor)
 
-                if datetime.now().minute % 15 == 0:
-                    del mqtt_client
-                    mqtt_client = setup_mqtt()
+                    if datetime.now().minute % 15 == 0:
+                        del mqtt_client
+                        mqtt_client = setup_mqtt()
 
-                mqtt_client.publish(MQTT_TOPIC, payload=dumps({'temperature': temp, 'humidity': rhum}))
+                    mqtt_client.publish(MQTT_TOPIC, payload=dumps({'temperature': temp, 'humidity': rhum}))
 
-                content = [temp, rhum, dehum_state]
+                    content = [temp, rhum, dehum_state]
 
-                for line_num, line in enumerate(LINES):
-                    lcd.set_cursor_position(0, line_num)
-                    lcd.write(line % content[line_num])
-            elif not dehum_state == prev_dehum_state:
-                lcd.set_cursor_position(0, 2)
-                lcd.write(LINES[2] % dehum_state)
-                prev_dehum_state = dehum_state
-
-            sleep(1)
-            i += 1
+                    for line_num, line in enumerate(LINES):
+                        lcd.set_cursor_position(0, line_num)
+                        lcd.write(line % content[line_num])
+                elif not dehum_state == prev_dehum_state:
+                    lcd.set_cursor_position(0, 2)
+                    lcd.write(LINES[2] % dehum_state)
+                    prev_dehum_state = dehum_state
+            except Exception:
+                sleep(10)
+                i += 10
+            finally:
+                sleep(1)
+                i += 1
     except KeyboardInterrupt:
         pass
 
