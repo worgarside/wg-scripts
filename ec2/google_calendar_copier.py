@@ -102,7 +102,7 @@ def event_in_list(target_event, event_list):
 
 
 def main():
-    event_count = 20
+    event_count = 200
 
     source_events = get_events(CalendarType.SOURCE, event_count=event_count)
     destination_events = get_events(CalendarType.DEST)

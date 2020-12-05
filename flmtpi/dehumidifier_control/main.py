@@ -23,7 +23,7 @@ PI.set_mode(FAN_PIN, OUTPUT)
 
 def on_message(*args):
     PI.write(FAN_PIN, HIGH)
-    sleep(0.2)
+    sleep(0.5)
     PI.write(FAN_PIN, LOW)
 
 

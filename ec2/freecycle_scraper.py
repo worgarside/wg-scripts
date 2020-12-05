@@ -1,3 +1,4 @@
+from datetime import datetime
 from os import getenv, path
 from pickle import load, dump
 
@@ -73,4 +74,5 @@ def main():
 
 
 if __name__ == '__main__':
+    print(f"\n\n----------------------------------\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     main()
