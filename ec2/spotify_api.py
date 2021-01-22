@@ -1,10 +1,9 @@
-from datetime import datetime
-from json import load, dump
+from datetime import datetime, timedelta
+from json import load, dumps, dump
 from logging import StreamHandler, FileHandler, Formatter, getLogger, DEBUG
 from os import getenv, mkdir
 from os.path import join, abspath, dirname, sep
 from pathlib import Path
-from pprint import pprint
 
 from dotenv import load_dotenv
 from spotipy import Spotify
@@ -29,8 +28,13 @@ try:
 except FileExistsError:
     pass
 
+TODAY_STR = datetime.today().strftime("%Y-%m-%d")
+
+SEVEN_DAYS_BEHIND = datetime.today() - timedelta(days=7)
+SEVEN_DAYS_FORWARD = datetime.today() + timedelta(days=7)
+
 SH = StreamHandler(stdout)
-FH = FileHandler(f"{LOG_DIR}/{datetime.today().strftime('%Y-%m-%d')}.log")
+FH = FileHandler(f"{LOG_DIR}/{TODAY_STR}.log")
 
 FORMATTER = Formatter(
     "%(asctime)s\t%(name)s\t[%(levelname)s]\t%(message)s", "%Y-%m-%d %H:%M:%S"
@@ -129,12 +133,20 @@ def get_new_followed_artists():
             LOGGER.debug("Adding %s to followed artists", artist["name"])
             USER_RECORD["followed_artists"].append(record)
 
-            USER_RECORD["followed_artists_albums"][artist["id"]] = [
-                {"id": album["id"], "name": album["name"]}
-                for album in get_all(SPOTIFY.artist_albums, artist_id=artist["id"])
-                if album.get("album_type") != "compilation"
-                and album.get("album_group") not in {"compilation", "appears_on"}
-            ]
+            USER_RECORD["followed_artists_albums"][artist["id"]] = list(
+                {
+                    album["name"]
+                    for album in get_all(SPOTIFY.artist_albums, artist_id=artist["id"])
+                    if all(
+                        [
+                            album.get("album_type") != "compilation",
+                            album.get("album_group")
+                            not in {"compilation", "appears_on"},
+                            "GB" in album.get("available_markets", []),
+                        ]
+                    )
+                }
+            )
 
 
 def check_new_releases():
@@ -144,15 +156,25 @@ def check_new_releases():
         artists_albums = get_all(SPOTIFY.artist_albums, artist_id=artist["id"])
 
         for album in artists_albums:
-            if album.get("album_type") == "compilation"                or album.get("album_group")  in {"compilation", "appears_on"}:
+            if any(
+                [
+                    album.get("album_type") == "compilation",
+                    album.get("album_group") in {"compilation", "appears_on"},
+                    "GB" not in album.get("available_markets", []),
+                    album.get("release_date_precision") == "day"
+                    and not SEVEN_DAYS_BEHIND
+                    <= datetime.strptime(
+                        album.get("release_date", TODAY_STR), "%Y-%m-%d"
+                    )
+                    <= SEVEN_DAYS_FORWARD,
+                ]
+            ):
                 continue
 
-            record = {
-                "id": album["id"],
-                "name": album["name"],
-            }
-
-            if record not in USER_RECORD["followed_artists_albums"][artist["id"]]:
+            if (
+                album["name"]
+                not in USER_RECORD["followed_artists_albums"][artist["id"]]
+            ):
                 message = f"New album found by {artist['name']}: `{album['name']}`"
 
                 if url := album.get("external_urls", {}).get("spotify"):
@@ -160,9 +182,10 @@ def check_new_releases():
 
                 LOGGER.info(message)
                 USER_RECORD["followed_artists_albums"][artist["id"]].append(
-                    record
+                    album["name"]
                 )
                 pb_notify(message, **PB_PARAMS)
+                # print(dumps(album))
 
 
 def main():
