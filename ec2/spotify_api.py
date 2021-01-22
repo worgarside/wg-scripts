@@ -83,6 +83,7 @@ SPOTIFY = Spotify(
         client_secret=CLIENT_SECRET,
         redirect_uri="http://localhost:8080",
         scope=",".join(ALL_SCOPES),
+        cache_path=join(abspath(dirname(__file__)), "cache.json"),
     )
 )
 
@@ -131,6 +132,8 @@ def get_new_followed_artists():
             USER_RECORD["followed_artists_albums"][artist["id"]] = [
                 {"id": album["id"], "name": album["name"]}
                 for album in get_all(SPOTIFY.artist_albums, artist_id=artist["id"])
+                if album.get("album_type") != "compilation"
+                and album.get("album_group") not in {"compilation", "appears_on"}
             ]
 
 
@@ -141,6 +144,9 @@ def check_new_releases():
         artists_albums = get_all(SPOTIFY.artist_albums, artist_id=artist["id"])
 
         for album in artists_albums:
+            if album.get("album_type") == "compilation"                or album.get("album_group")  in {"compilation", "appears_on"}:
+                continue
+
             record = {
                 "id": album["id"],
                 "name": album["name"],
