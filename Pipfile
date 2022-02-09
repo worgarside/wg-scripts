@@ -12,15 +12,17 @@ psycopg2-binary = "*"
 paho-mqtt = "*"
 psutil = "*"
 google-auth-oauthlib = "*"
-pigpio = "*"
-pylint = "*"
+pigpio = { version = "*", sys_platform = "== 'linux'" }
 paramiko = "*"
 python-systemd = "*"
 boto3 = "*"
-dot3k = "*"
+dot3k = { version = "*", sys_platform = "== 'linux'" }
 spotipy = "*"
 
 [dev-packages]
+black = "*"
+pylint = "*"
+pre-commit = "*"
 
 [requires]
 python_version = "3.8"
