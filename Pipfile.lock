@@ -1106,11 +1106,11 @@
         },
         "wg-utilities": {
             "hashes": [
-                "sha256:3f5053eea8104090ce15cbfb5a22e11f36f61d9fb71757cb3e9eb2175e421eea",
-                "sha256:aec9cd444f24b2cb93b75dcbc9501755aeff00b783258110534af233441fe8ee"
+                "sha256:16203fa858f0f75f6328b262eeb39694651a1682e12e0af3947b787626e17bec",
+                "sha256:20ee00d27b95850958edb9fa8f327991ed41b64e1828016122a04125d2b142d0"
             ],
             "index": "pypi",
-            "version": "==2.23.1"
+            "version": "==2.24.3"
         },
         "xmltodict": {
             "hashes": [
