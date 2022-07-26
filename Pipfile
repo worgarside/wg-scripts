@@ -4,20 +4,10 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-gitpython = "*"
 wg-utilities = "*"
-"beautifulsoup4" = "*"
 python-dotenv = "*"
-psycopg2-binary = "*"
 paho-mqtt = "*"
 psutil = "*"
-google-auth-oauthlib = "*"
-pigpio = { version = "*", sys_platform = "== 'linux'" }
-paramiko = "*"
-python-systemd = "*"
-boto3 = "*"
-dot3k = { version = "*", sys_platform = "== 'linux'" }
-spotipy = "*"
 
 [dev-packages]
 black = "*"
@@ -25,4 +15,4 @@ pylint = "*"
 pre-commit = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.9"

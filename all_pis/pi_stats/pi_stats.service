@@ -1,0 +1,15 @@
+[Unit]
+Description=Pi Stats Reporting Service
+After=multi-user.target
+StartLimitBurst=10
+StartLimitIntervalSec=10
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=pi
+ExecStart=/home/pi/.local/share/virtualenvs/wg-scripts-AYjKaK-m/bin/python /home/pi/wg-scripts/all_pis/pi_stats/main.py
+
+[Install]
+WantedBy=multi-user.target
