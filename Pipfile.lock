@@ -342,11 +342,11 @@
         },
         "dot3k": {
             "hashes": [
-                "sha256:b091dab8da80f271c0771ac334e5a07a7e9f8c391d8dca59a07d9a272ba868da"
+                "sha256:4c835f10144ba66f3f727470d039f79d0ddab93d54d152580a820d87240148d0"
             ],
             "index": "pypi",
             "markers": "sys_platform == 'linux'",
-            "version": "==2.0.1"
+            "version": "==2.0.3"
         },
         "flask": {
             "hashes": [
@@ -1559,7 +1559,7 @@
                 "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc",
                 "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"
             ],
-            "markers": "python_version < '3.11'",
+            "markers": "python_version >= '3.7'",
             "version": "==2.0.1"
         },
         "tomlkit": {
