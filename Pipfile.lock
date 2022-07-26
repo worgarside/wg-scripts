@@ -756,11 +756,11 @@
         },
         "paramiko": {
             "hashes": [
-                "sha256:04097dbd96871691cdb34c13db1883066b8a13a0df2afd4cb0a92221f51c2603",
-                "sha256:944a9e5dbdd413ab6c7951ea46b0ab40713235a9c4c5ca81cfe45c6f14fa677b"
+                "sha256:003e6bee7c034c21fbb051bf83dc0a9ee4106204dd3c53054c71452cc4ec3938",
+                "sha256:655f25dc8baf763277b933dfcea101d636581df8d6b9774d1fb653426b72c270"
             ],
             "index": "pypi",
-            "version": "==2.9.2"
+            "version": "==2.11.0"
         },
         "pigpio": {
             "hashes": [
