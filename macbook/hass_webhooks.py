@@ -4,12 +4,14 @@ from os import getenv
 from dotenv import load_dotenv
 from psutil import sensors_battery
 from requests import post
+from wg_utilities.exceptions import on_exception  # pylint: disable=no-name-in-module
 
 load_dotenv()
 
 HASS_BASE_URL = getenv("HASS_BASE_URL")
 
 
+@on_exception()  # type: ignore[misc]
 def update_battery_percentage_sensor() -> None:
     """Send MacBook battery info to Home Assistant"""
     res = post(
