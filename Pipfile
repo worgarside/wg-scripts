@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-wg-utilities = "*"
+wg-utilities = {extras = ["exceptions"], version = "*"}
 python-dotenv = "*"
 paho-mqtt = "*"
 psutil = "*"
