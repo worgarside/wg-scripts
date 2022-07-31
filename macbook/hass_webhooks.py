@@ -4,7 +4,7 @@ from os import getenv
 from dotenv import load_dotenv
 from psutil import sensors_battery
 from requests import post
-from requests.exceptions import SSLError
+from requests.exceptions import RequestException
 from wg_utilities.exceptions import on_exception  # pylint: disable=no-name-in-module
 
 load_dotenv()
@@ -26,7 +26,7 @@ def update_battery_percentage_sensor() -> None:
             headers={"Content-Type": "application/json"},
         )
         print(res.status_code, res.reason)
-    except SSLError:
+    except (ConnectionError, RequestException):
         pass
 
 

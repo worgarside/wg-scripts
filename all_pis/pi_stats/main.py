@@ -1,7 +1,7 @@
 """This script sends system stats to HA for use in system health stuff"""
 from json import dumps
 from os import getenv, getloadavg, path, sep
-from socket import gethostname
+from socket import gethostname, timeout
 from time import sleep
 from typing import Tuple
 
@@ -95,11 +95,15 @@ def main() -> None:
             "load_15m": load_15m,
         }
 
-        single(
-            f"/homeassistant/{rasp_pi.hostname}/stats",
-            payload=dumps(stats),
-            **MQTT_AUTH_KWARGS,
-        )
+        try:
+            single(
+                f"/homeassistant/{rasp_pi.hostname}/stats",
+                payload=dumps(stats),
+                **MQTT_AUTH_KWARGS,
+            )
+        except timeout:
+            pass
+
         sleep(60)
 
 
