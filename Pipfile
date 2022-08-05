@@ -4,15 +4,15 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-wg-utilities = {extras = ["exceptions"], version = "*"}
+wg-utilities = {extras = ["exceptions", "devices.dht22"],version = "*"}
 python-dotenv = "*"
 paho-mqtt = "*"
 psutil = "*"
+pigpio = "*"
+dot3k =  {version = "*", sys_platform = "== 'linux'"}
+rpi-gpio =  {version = "*", sys_platform = "== 'linux'"}
 
 [dev-packages]
 black = "*"
 pylint = "*"
 pre-commit = "*"
-
-[requires]
-python_version = "3.9"
