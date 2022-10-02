@@ -244,7 +244,7 @@ def main() -> None:
             dht22.trigger()
             screen.write_lines(
                 [
-                    (datetime.now() - timedelta(days=2)).strftime("%a, %-d %b %Y"),
+                    datetime.now().strftime("%a, %-d %b %Y"),
                     TEMP_LINE.format(dht22.temperature),
                     HUMID_LINE.format(dht22.humidity),
                 ]
