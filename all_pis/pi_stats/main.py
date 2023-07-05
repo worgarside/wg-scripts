@@ -1,9 +1,10 @@
 """This script sends system stats to HA for use in system health stuff"""
+from __future__ import annotations
+
 from json import dumps
 from os import getenv, getloadavg, path, sep
 from socket import gethostname, timeout
 from time import sleep
-from typing import Tuple
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
@@ -64,7 +65,7 @@ class RaspberryPi:
         return float(round(cpu_percent(), 2))
 
     @property
-    def load_averages(self) -> Tuple[float, float, float]:
+    def load_averages(self) -> tuple[float, float, float]:
         """
         Returns:
             tuple: average recent system load information

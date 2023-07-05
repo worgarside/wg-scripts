@@ -1,12 +1,13 @@
 """Module to take readings from DHT22 and report them to HA"""
 from __future__ import annotations
 
+from collections.abc import Iterator
 from colorsys import hsv_to_rgb
-from datetime import datetime, timedelta
+from datetime import datetime
 from json import dumps
 from os import getenv
 from time import sleep
-from typing import Any, Iterator
+from typing import Any
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
@@ -18,7 +19,6 @@ try:
     from dot3k import lcd
     from RPi import GPIO
 except ImportError:
-
     # pylint: disable=invalid-name
     class lcd:  # type: ignore[no-redef]
         """Dummy class for lcd import on non-Pi machine"""

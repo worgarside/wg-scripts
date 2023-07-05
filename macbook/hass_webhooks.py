@@ -1,4 +1,6 @@
 """Home Assistant webhooks"""
+from __future__ import annotations
+
 from json import dumps
 from logging import DEBUG, getLogger
 from os import getenv
