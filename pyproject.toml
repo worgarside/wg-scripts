@@ -1,3 +1,27 @@
+[tool.poetry]
+name = "wg-scripts"
+version = "0.1.0"
+description = ""
+authors = ["Will Garside <worgarside@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+python-dotenv = "^1.0.0"
+wg-utilities = { extras = ["exceptions", "devices.dht22"], version = "*" }
+paho-mqtt = "*"
+psutil = "*"
+pigpio = "*"
+dot3k = { version = "*", platform = "linux" }
+rpi-gpio = { version = "*", platform = "linux" }
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+pylint = "^2.17.4"
+pre-commit = "^3.3.3"
+
 [tool.black]
 include = '\.pyi?$'
 exclude = '''
