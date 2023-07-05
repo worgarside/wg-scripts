@@ -9,20 +9,20 @@ from time import sleep
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
 from psutil import cpu_percent, disk_usage, virtual_memory
-from wg_utilities.exceptions import on_exception  # pylint: disable=no-name-in-module
+from wg_utilities.exceptions import on_exception
 from wg_utilities.functions import run_cmd
 
 PROJECT_ROOT = sep.join(path.abspath(path.dirname(__file__)).split(sep)[:-2])
 
 load_dotenv()
 
-MQTT_AUTH_KWARGS = dict(
-    hostname=getenv("MQTT_HOST"),
-    auth={
+MQTT_AUTH_KWARGS = {
+    "hostname": getenv("MQTT_HOST"),
+    "auth": {
         "username": getenv("MQTT_USERNAME"),
         "password": getenv("MQTT_PASSWORD"),
     },
-)
+}
 
 
 class RaspberryPi:

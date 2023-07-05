@@ -12,8 +12,8 @@ from typing import Any
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
 from pigpio import pi
-from wg_utilities.devices.dht22 import DHT22Sensor  # pylint: disable=no-name-in-module
-from wg_utilities.exceptions import on_exception  # pylint: disable=no-name-in-module
+from wg_utilities.devices.dht22 import DHT22Sensor
+from wg_utilities.exceptions import on_exception
 
 try:
     from dot3k import lcd
@@ -107,13 +107,13 @@ BLUE = 13
 TEMP_LINE = f"Temp:  {{0:.1f}}{chr(223)}C"
 HUMID_LINE = "Humid: {0:.2f}%"
 
-MQTT_AUTH_KWARGS = dict(
-    hostname=getenv("MQTT_HOST"),
-    auth={
+MQTT_AUTH_KWARGS = {
+    "hostname": getenv("MQTT_HOST"),
+    "auth": {
         "username": getenv("MQTT_USERNAME"),
         "password": getenv("MQTT_PASSWORD"),
     },
-)
+}
 
 
 class DisplayOTron:
