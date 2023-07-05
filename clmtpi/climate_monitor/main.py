@@ -1,24 +1,24 @@
 """Module to take readings from DHT22 and report them to HA"""
 from __future__ import annotations
 
+from collections.abc import Iterator
 from colorsys import hsv_to_rgb
-from datetime import datetime, timedelta
+from datetime import datetime
 from json import dumps
 from os import getenv
 from time import sleep
-from typing import Any, Iterator
+from typing import Any
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
 from pigpio import pi
-from wg_utilities.devices.dht22 import DHT22Sensor  # pylint: disable=no-name-in-module
-from wg_utilities.exceptions import on_exception  # pylint: disable=no-name-in-module
+from wg_utilities.devices.dht22 import DHT22Sensor
+from wg_utilities.exceptions import on_exception
 
 try:
     from dot3k import lcd
     from RPi import GPIO
 except ImportError:
-
     # pylint: disable=invalid-name
     class lcd:  # type: ignore[no-redef]
         """Dummy class for lcd import on non-Pi machine"""
@@ -107,13 +107,13 @@ BLUE = 13
 TEMP_LINE = f"Temp:  {{0:.1f}}{chr(223)}C"
 HUMID_LINE = "Humid: {0:.2f}%"
 
-MQTT_AUTH_KWARGS = dict(
-    hostname=getenv("MQTT_HOST"),
-    auth={
+MQTT_AUTH_KWARGS = {
+    "hostname": getenv("MQTT_HOST"),
+    "auth": {
         "username": getenv("MQTT_USERNAME"),
         "password": getenv("MQTT_PASSWORD"),
     },
-)
+}
 
 
 class DisplayOTron:
