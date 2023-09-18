@@ -1,100 +1,113 @@
-"""Module to take readings from DHT22 and report them to HA"""
+"""Module to take readings from DHT22 and report them to HA."""
 from __future__ import annotations
 
+import platform
 from collections.abc import Iterator
 from colorsys import hsv_to_rgb
 from datetime import datetime
 from json import dumps
+from logging import getLogger
 from os import getenv
 from time import sleep
-from typing import Any
+from typing import Any, Final
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
-from pigpio import pi
+from pigpio import pi  # type: ignore[import]
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.exceptions import on_exception
 
 try:
-    from dot3k import lcd
-    from RPi import GPIO
+    from dot3k import lcd as dot3k_lcd  # type: ignore[import]
+    from RPi import GPIO  # type: ignore[import]
 except ImportError:
+    if platform.system() != "Darwin":
+        raise
+
     # pylint: disable=invalid-name
-    class lcd:  # type: ignore[no-redef]
-        """Dummy class for lcd import on non-Pi machine"""
+    class dot3k_lcd:  # type: ignore[no-redef]  # noqa: N801
+        """Dummy class for lcd import on non-Pi machine."""
 
         @staticmethod
         def clear() -> None:
-            """Dummy function for clearing the LCD"""
+            """Dummy function for clearing the LCD."""
 
         @staticmethod
         def create_animation(
             anim_pos: int, anim_map: list[Any], frame_rate: int
         ) -> None:
-            """Dummy function for creating an animation"""
+            """Dummy function for creating an animation."""
 
         @staticmethod
         def create_char(char_pos: int, char_map: list[int]) -> None:
-            """Dummy function for creating a character"""
+            """Dummy function for creating a character."""
 
         @staticmethod
         def set_contrast(contrast: int) -> None:
-            """Dummy function for setting LCD contracts"""
+            """Dummy function for setting LCD contracts."""
 
         @staticmethod
         def set_cursor_offset(offset: int) -> None:
-            """Dummy function for setting cursor offset"""
+            """Dummy function for setting cursor offset."""
 
         @staticmethod
         def set_cursor_position(column: int, row: int) -> None:
-            """Dummy function for setting cursor position"""
+            """Dummy function for setting cursor position."""
 
         @staticmethod
         def update_animations() -> None:
-            """Dummy function for updating animations"""
+            """Dummy function for updating animations."""
 
         @staticmethod
         def write(value: str) -> None:
-            """Dummy function for writing to the LCD"""
+            """Dummy function for writing to the LCD."""
 
     class GpioPin:
-        """Dummy class for lcd import on non-Pi machine"""
+        """Dummy class for lcd import on non-Pi machine."""
 
-        def ChangeDutyCycle(self, value: float) -> None:  # pylint: disable=invalid-name
-            """Dummy function"""
+        def ChangeDutyCycle(  # noqa: N802
+            self, value: float
+        ) -> None:  # pylint: disable=invalid-name
+            """Dummy function."""
 
         def start(self, value: int) -> None:
-            """Dummy function"""
+            """Dummy function."""
 
         def stop(self) -> None:
-            """Dummy function"""
+            """Dummy function."""
 
     class GPIO:  # type: ignore[no-redef]
-        """Dummy class for lcd import on non-Pi machine"""
+        """Dummy class for lcd import on non-Pi machine."""
 
         BCM = 11
         OUT = 0
 
         @staticmethod
         def cleanup() -> None:
-            """Dummy function"""
+            """Dummy function."""
 
         @staticmethod
         def setmode(mode: int) -> None:
-            """Dummy function"""
+            """Dummy function."""
 
         @staticmethod
         def setup(pin: int, mode: int) -> None:
-            """Dummy function"""
+            """Dummy function."""
 
         @staticmethod
-        def PWM(pin: int, mode: int) -> GpioPin:  # pylint: disable=invalid-name
-            """Dummy function"""
+        def PWM(  # noqa: N802
+            pin: int, mode: int
+        ) -> GpioPin:  # pylint: disable=invalid-name
+            """Dummy function."""
             _ = pin, mode
             return GpioPin()
 
 
 load_dotenv()
+
+LOGGER = getLogger(__name__)
+LOGGER.setLevel("INFO")
+
 
 LOOP_DELAY_SECONDS = 30
 
@@ -117,20 +130,21 @@ MQTT_AUTH_KWARGS = {
 
 
 class DisplayOTron:
-    """Class for writing to Pimoroni's Display-O-Tron 3000"""
+    """Class for writing to Pimoroni's Display-O-Tron 3000."""
 
-    MAX_LINE_LENGTH = 16
+    LCD = dot3k_lcd
 
-    @on_exception()  # type: ignore[misc]
-    def __init__(self) -> None:
-        # This doesn't functionally help anything, just makes it a bit nicer to use
-        self.lcd = lcd
+    LINE_COUNT: Final[int] = 3
 
-    @on_exception()  # type: ignore[misc]
+    MAX_LINE_LENGTH: Final[int] = 16
+
+    @on_exception(
+        lambda exc: LOGGER.exception("Error writing to DisplayOTron: %r", exc)
+    )
     def write_line(
-        self, line_num: int, content: str, force_truncate: bool = True
+        self, line_num: int, content: str, *, force_truncate: bool = True
     ) -> None:
-        """Write a message to a specific line
+        """Write a message to a specific line.
 
         Args:
             line_num (int): which line to write to
@@ -157,12 +171,14 @@ class DisplayOTron:
                     f"should be <= {self.MAX_LINE_LENGTH}"
                 )
 
-        self.lcd.set_cursor_position(0, line_num)
-        self.lcd.write(content.ljust(self.MAX_LINE_LENGTH))
+        self.LCD.set_cursor_position(0, line_num)
+        self.LCD.write(content.ljust(self.MAX_LINE_LENGTH))
 
-    @on_exception()  # type: ignore[misc]
-    def write_lines(self, lines: list[str], wipe_null: bool = False) -> None:
-        """Write multiple lines to the LCD
+    @on_exception(
+        lambda exc: LOGGER.exception("Error writing to DisplayOTron: %r", exc)
+    )
+    def write_lines(self, lines: list[str], *, wipe_null: bool = False) -> None:
+        """Write multiple lines to the LCD.
 
         Args:
             lines (list): a list of content
@@ -173,7 +189,7 @@ class DisplayOTron:
             ValueError: if the number of lines to write != 3
         """
 
-        if len(lines) != 3:
+        if len(lines) != self.LINE_COUNT:
             raise ValueError(
                 f"Unexpected number of lines to write ({len(lines)}, expected length 3"
             )
@@ -185,11 +201,11 @@ class DisplayOTron:
             self.write_line(line_num=i, content=line or "")
 
 
-@on_exception()  # type: ignore[misc]
+@on_exception(lambda exc: LOGGER.exception("Error generating RGB color: %r", exc))
 def rgb_generator(
     num_steps: int = int(86400 / LOOP_DELAY_SECONDS),
 ) -> Iterator[tuple[float, ...]]:
-    """Generator for creating RGB values in order to cycle through the colours
+    """Generator for creating RGB values in order to cycle through the colours.
 
     Args:
         num_steps (int): the number of steps to run through the colours
@@ -205,16 +221,16 @@ def rgb_generator(
         hue += step_val
         hue %= 1.0  # cap hue at 1.0
 
-        yield tuple(map(lambda v: v * 100, rgb))
+        yield tuple(v * 100 for v in rgb)
 
 
-@on_exception()  # type: ignore[misc]
+@on_exception(lambda exc: LOGGER.exception("Error in main loop: %r", exc))
 def main() -> None:
-    """Takes temp/humidity readings, writes them to the LCD, uploads them to HA"""
+    """Takes temp/humidity readings, writes them to the LCD, uploads them to HA."""
     color = rgb_generator()
 
-    lcd.set_contrast(18)
-    lcd.clear()
+    dot3k_lcd.set_contrast(18)
+    dot3k_lcd.clear()
 
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(5, GPIO.OUT)
@@ -257,12 +273,12 @@ def main() -> None:
                         "humidity": round(dht22.humidity, 2),
                     }
                 ),
-                **MQTT_AUTH_KWARGS,
+                **MQTT_AUTH_KWARGS,  # type: ignore[arg-type]
             )
             sleep(LOOP_DELAY_SECONDS)
 
     except Exception:
-        lcd.clear()
+        dot3k_lcd.clear()
         red.stop()
         green.stop()
         blue.stop()

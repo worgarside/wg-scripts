@@ -99,17 +99,11 @@ repos:
           - --strict
           - --show-error-codes
         additional_dependencies:
+          - python-dotenv
+          - types-paho-mqtt
+          - types-psutil
           - types-requests
-          - types-paramiko
-          - boto3-stubs
-          - lxml-stubs
-          - types-flask
-          - types-Pillow
-          - types-setuptools
-          - types-tzlocal
-          - pydantic
-          - types-PyYAML
-          - types-python-dateutil
+          - wg-utilities==4.1.2
 
   - repo: local
     hooks:
