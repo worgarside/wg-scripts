@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from json import dumps
-from logging import WARNING, getLogger
+from logging import getLogger
 from os import getenv, getloadavg
 from pathlib import Path
 from socket import gethostname
@@ -13,18 +13,11 @@ from paho.mqtt.publish import single
 from psutil import cpu_percent, disk_usage, virtual_memory
 from wg_utilities.exceptions import on_exception
 from wg_utilities.functions import run_cmd
-from wg_utilities.loggers import add_warehouse_handler
 
 PROJECT_ROOT = Path(__file__).parents[2]
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
-
-add_warehouse_handler(
-    LOGGER,
-    level=WARNING,
-    warehouse_port=8002,
-)
 
 load_dotenv()
 

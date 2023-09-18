@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from colorsys import hsv_to_rgb
 from datetime import datetime
 from json import dumps
-from logging import WARNING, getLogger
+from logging import getLogger
 from os import getenv
 from time import sleep
 from typing import Any, Final
@@ -16,7 +16,6 @@ from paho.mqtt.publish import single
 from pigpio import pi  # type: ignore[import]
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.exceptions import on_exception
-from wg_utilities.loggers import add_warehouse_handler
 
 try:
     from dot3k import lcd as dot3k_lcd  # type: ignore[import]
@@ -109,11 +108,6 @@ load_dotenv()
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
 
-add_warehouse_handler(
-    LOGGER,
-    level=WARNING,
-    warehouse_port=8002,
-)
 
 LOOP_DELAY_SECONDS = 30
 
