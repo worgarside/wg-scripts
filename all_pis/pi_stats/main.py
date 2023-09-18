@@ -1,9 +1,11 @@
-"""This script sends system stats to HA for use in system health stuff"""
+"""This script sends system stats to HA for use in system health stuff."""
 from __future__ import annotations
 
 from json import dumps
-from os import getenv, getloadavg, path, sep
-from socket import gethostname, timeout
+from logging import WARNING, getLogger
+from os import getenv, getloadavg
+from pathlib import Path
+from socket import gethostname
 from time import sleep
 
 from dotenv import load_dotenv
@@ -11,8 +13,18 @@ from paho.mqtt.publish import single
 from psutil import cpu_percent, disk_usage, virtual_memory
 from wg_utilities.exceptions import on_exception
 from wg_utilities.functions import run_cmd
+from wg_utilities.loggers import add_warehouse_handler
 
-PROJECT_ROOT = sep.join(path.abspath(path.dirname(__file__)).split(sep)[:-2])
+PROJECT_ROOT = Path(__file__).parents[2]
+
+LOGGER = getLogger(__name__)
+LOGGER.setLevel("INFO")
+
+add_warehouse_handler(
+    LOGGER,
+    level=WARNING,
+    warehouse_port=8002,
+)
 
 load_dotenv()
 
@@ -26,56 +38,61 @@ MQTT_AUTH_KWARGS = {
 
 
 class RaspberryPi:
-    """Class to represent a Pi and it's current statistics"""
+    """Class to represent a Pi and its current statistics."""
 
     def __init__(self) -> None:
         self.hostname = gethostname()
 
     @property
     def cpu_temp(self) -> float:
-        """
+        """Get the current CPU temperature.
+
         Returns:
-            float: the current CPU temperature in Celsius
+            float: the current CPU temperature in Celsius.
         """
         output, _ = run_cmd("vcgencmd measure_temp")
         return float(output.replace("temp=", "").replace("'C", ""))
 
     @property
     def disk_usage_percent(self) -> float:
-        """
+        """Get the current disk usage percentage.
+
         Returns:
-            float: the current disk usage percentage
+            float: the current disk usage percentage.
         """
         return float(round(disk_usage("/home").percent, 2))
 
     @property
     def memory_usage(self) -> float:
-        """
+        """Get the current memory usage percentage.
+
         Returns:
-            float: the percentage of memory currently in use
+            float: the percentage of memory currently in use.
         """
         return float(round(virtual_memory().percent, 2))
 
     @property
     def cpu_usage(self) -> float:
-        """
+        """Get the current CPU usage percentage.
+
         Returns:
-            float: the percentage of CPU currently in use
+            float: the percentage of CPU currently in use.
         """
         return float(round(cpu_percent(), 2))
 
     @property
     def load_averages(self) -> tuple[float, float, float]:
-        """
+        """Get the average system load over the last 1, 5, and 15 minutes.
+
         Returns:
-            tuple: average recent system load information
+            tuple: average recent system load information.
         """
         return getloadavg()
 
 
-@on_exception()  # type: ignore[misc]
+@on_exception(lambda exc: LOGGER.exception("Error sending stats: %r", exc))
 def main() -> None:
-    """Sends system stats to Home Assistant every minute"""
+    """Sends system stats to Home Assistant every minute."""
 
     rasp_pi = RaspberryPi()
 
@@ -100,10 +117,10 @@ def main() -> None:
             single(
                 f"/homeassistant/{rasp_pi.hostname}/stats",
                 payload=dumps(stats),
-                **MQTT_AUTH_KWARGS,
+                **MQTT_AUTH_KWARGS,  # type: ignore[arg-type]
             )
-        except timeout:
-            pass
+        except TimeoutError:
+            LOGGER.exception("%s timed out sending stats", rasp_pi.hostname)
 
         sleep(60)
 
