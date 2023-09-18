@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from json import dumps
-from logging import getLogger
+from logging import WARNING, getLogger
 from os import getenv, getloadavg
 from pathlib import Path
 from socket import gethostname
@@ -11,13 +11,16 @@ from time import sleep
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
 from psutil import cpu_percent, disk_usage, virtual_memory
-from wg_utilities.exceptions import on_exception
+from wg_utilities.decorators import process_exception
 from wg_utilities.functions import run_cmd
+from wg_utilities.loggers import add_warehouse_handler
 
 PROJECT_ROOT = Path(__file__).parents[2]
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
+
+add_warehouse_handler(LOGGER, level=WARNING)
 
 load_dotenv()
 
@@ -83,7 +86,7 @@ class RaspberryPi:
         return getloadavg()
 
 
-@on_exception(lambda exc: LOGGER.exception("Error sending stats: %r", exc))
+@process_exception(logger=LOGGER)
 def main() -> None:
     """Sends system stats to Home Assistant every minute."""
 

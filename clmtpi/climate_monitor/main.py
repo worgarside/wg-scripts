@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from colorsys import hsv_to_rgb
 from datetime import datetime
 from json import dumps
-from logging import getLogger
+from logging import WARNING, getLogger
 from os import getenv
 from time import sleep
 from typing import Any, Final
@@ -14,8 +14,12 @@ from typing import Any, Final
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
 from pigpio import pi  # type: ignore[import]
+from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
-from wg_utilities.exceptions import on_exception
+from wg_utilities.loggers import add_warehouse_handler
+
+LOGGER = getLogger(__name__)
+add_warehouse_handler(LOGGER, level=WARNING)
 
 try:
     from dot3k import lcd as dot3k_lcd  # type: ignore[import]
@@ -138,9 +142,7 @@ class DisplayOTron:
 
     MAX_LINE_LENGTH: Final[int] = 16
 
-    @on_exception(
-        lambda exc: LOGGER.exception("Error writing to DisplayOTron: %r", exc)
-    )
+    @process_exception(logger=LOGGER)
     def write_line(
         self, line_num: int, content: str, *, force_truncate: bool = True
     ) -> None:
@@ -174,9 +176,7 @@ class DisplayOTron:
         self.LCD.set_cursor_position(0, line_num)
         self.LCD.write(content.ljust(self.MAX_LINE_LENGTH))
 
-    @on_exception(
-        lambda exc: LOGGER.exception("Error writing to DisplayOTron: %r", exc)
-    )
+    @process_exception(logger=LOGGER)
     def write_lines(self, lines: list[str], *, wipe_null: bool = False) -> None:
         """Write multiple lines to the LCD.
 
@@ -201,7 +201,7 @@ class DisplayOTron:
             self.write_line(line_num=i, content=line or "")
 
 
-@on_exception(lambda exc: LOGGER.exception("Error generating RGB color: %r", exc))
+@process_exception(logger=LOGGER)
 def rgb_generator(
     num_steps: int = int(86400 / LOOP_DELAY_SECONDS),
 ) -> Iterator[tuple[float, ...]]:
@@ -224,7 +224,7 @@ def rgb_generator(
         yield tuple(v * 100 for v in rgb)
 
 
-@on_exception(lambda exc: LOGGER.exception("Error in main loop: %r", exc))
+@process_exception(logger=LOGGER)
 def main() -> None:
     """Takes temp/humidity readings, writes them to the LCD, uploads them to HA."""
     color = rgb_generator()
