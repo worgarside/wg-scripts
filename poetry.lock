@@ -798,13 +798,13 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 
 [[package]]
 name = "wg-utilities"
-version = "4.1.2"
+version = "5.1.0"
 description = "Loads of useful stuff for the things I do :)"
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "wg_utilities-4.1.2-py3-none-any.whl", hash = "sha256:d836eba01d633534756eb95b44daa0480b3496275720cd1b40ab3ab268798e1a"},
-    {file = "wg_utilities-4.1.2.tar.gz", hash = "sha256:74318384c1c34803b91956d17921e5a73fe259f8d320831b7c1f261174989b93"},
+    {file = "wg_utilities-5.1.0-py3-none-any.whl", hash = "sha256:13b3fbd25278914407025b5ca3845818bcbcd3a27f9dc6cb71260d48cff68589"},
+    {file = "wg_utilities-5.1.0.tar.gz", hash = "sha256:731b543918e20d49f2168984493017af8a8cc842723d7549f6651058152a5de4"},
 ]
 
 [package.dependencies]
