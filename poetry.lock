@@ -61,13 +61,13 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "botocore"
-version = "1.31.49"
+version = "1.31.51"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">= 3.7"
 files = [
-    {file = "botocore-1.31.49-py3-none-any.whl", hash = "sha256:7d64cb45154e4f34f3a45f551e118caad7379ae831565639e0afe5b2af126c61"},
-    {file = "botocore-1.31.49.tar.gz", hash = "sha256:95e9716f27f67d4207f260ab0ea157603ca544d3b82c5f21728b1c732bec1817"},
+    {file = "botocore-1.31.51-py3-none-any.whl", hash = "sha256:91dfb38801d45214875a892bd1e908fc7a894c2ed170bacd67e6929af72f2bd2"},
+    {file = "botocore-1.31.51.tar.gz", hash = "sha256:8e133add22f07b55d21e14176b97b82e993d5f9aca70f5b0cd0908cb105ba53a"},
 ]
 
 [package.dependencies]
@@ -799,13 +799,13 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 
 [[package]]
 name = "wg-utilities"
-version = "5.1.0"
+version = "5.1.1"
 description = "Loads of useful stuff for the things I do :)"
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "wg_utilities-5.1.0-py3-none-any.whl", hash = "sha256:13b3fbd25278914407025b5ca3845818bcbcd3a27f9dc6cb71260d48cff68589"},
-    {file = "wg_utilities-5.1.0.tar.gz", hash = "sha256:731b543918e20d49f2168984493017af8a8cc842723d7549f6651058152a5de4"},
+    {file = "wg_utilities-5.1.1-py3-none-any.whl", hash = "sha256:491112d4c008ad1414790d2ab53414e8b794bf4a25f944d3f7e96e6a345b01d7"},
+    {file = "wg_utilities-5.1.1.tar.gz", hash = "sha256:0748f9a8631b990054ec4b48ac6b988428923262e1b1a54b78cd94fa2e664652"},
 ]
 
 [package.dependencies]
