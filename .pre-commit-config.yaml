@@ -103,7 +103,7 @@ repos:
           - types-paho-mqtt
           - types-psutil
           - types-requests
-          - wg-utilities==4.1.2
+          - wg-utilities==5.1.0
 
   - repo: local
     hooks:
