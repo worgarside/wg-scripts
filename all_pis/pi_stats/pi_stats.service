@@ -9,7 +9,8 @@ Type=simple
 Restart=always
 RestartSec=5
 User=pi
-ExecStart=/home/pi/.local/share/virtualenvs/wg-scripts-AYjKaK-m/bin/python /home/pi/wg-scripts/all_pis/pi_stats/main.py
+EnvironmentFile=/home/pi/wg-scripts/.env
+ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/all_pis/pi_stats/main.py
 
 [Install]
 WantedBy=multi-user.target
