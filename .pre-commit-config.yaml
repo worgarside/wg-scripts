@@ -1,5 +1,10 @@
 ---
 repos:
+  - repo: https://github.com/worgarside/pre-commit-hooks-dependency-sync
+    rev: 1.0.1
+    hooks:
+      - id: sync-additional-dependencies
+
   - repo: https://github.com/python-poetry/poetry
     rev: 1.6.0
     hooks:
@@ -12,7 +17,7 @@ repos:
           - requirements.txt
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.14.0
+    rev: v3.15.0
     hooks:
       - id: pyupgrade
         args:
@@ -30,7 +35,7 @@ repos:
       - id: blacken-docs
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       - id: check-added-large-files
         args:
@@ -59,7 +64,6 @@ repos:
         args:
           - -a
           - from __future__ import annotations
-
 
   - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
     rev: 0.2.3
@@ -99,11 +103,11 @@ repos:
           - --strict
           - --show-error-codes
         additional_dependencies:
-          - python-dotenv
+          - python-dotenv==1.0.0
           - types-paho-mqtt
           - types-psutil
           - types-requests
-          - wg-utilities==5.1.0
+          - wg-utilities==5.1.1
 
   - repo: local
     hooks:
@@ -119,6 +123,7 @@ repos:
         types:
           - python
         additional_dependencies:
+          - pylint==2.17.7
           - pylint-strict-informational
 
   - repo: https://github.com/pre-commit/pygrep-hooks
@@ -134,9 +139,6 @@ repos:
       - id: codespell
         additional_dependencies:
           - tomli
-        args:
-          - --skip
-          - '*.svg,*.json,*.lock'
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.0.292
