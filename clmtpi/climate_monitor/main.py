@@ -13,7 +13,7 @@ from typing import Any, Final
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
-from pigpio import pi  # type: ignore[import]
+from pigpio import pi  # type: ignore[import-not-found]
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
@@ -22,8 +22,8 @@ LOGGER = getLogger(__name__)
 add_warehouse_handler(LOGGER, level=WARNING)
 
 try:
-    from dot3k import lcd as dot3k_lcd  # type: ignore[import]
-    from RPi import GPIO  # type: ignore[import]
+    from dot3k import lcd as dot3k_lcd  # type: ignore[import-not-found]
+    from RPi import GPIO  # type: ignore[import-not-found]
 except ImportError:
     if platform.system() != "Darwin":
         raise
