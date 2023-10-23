@@ -17,7 +17,6 @@ dot3k = { version = "*", platform = "linux" }
 rpi-gpio = { version = "*", platform = "linux" }
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.10.0"
 pylint = "<4.0.0"
 pre-commit = "^3.5.0"
 
