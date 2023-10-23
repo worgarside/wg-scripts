@@ -18,7 +18,7 @@ rpi-gpio = { version = "*", platform = "linux" }
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.9.1"
-pylint = "<3.0.0"
+pylint = "<4.0.0"
 pre-commit = "^3.5.0"
 
 # Tool Configs
