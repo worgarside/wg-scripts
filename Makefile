@@ -4,3 +4,7 @@ create-env:
 
 install:
 	.venv/bin/pip install -r requirements.txt
+
+update:
+	git pull
+	@$(MAKE) install

@@ -199,13 +199,13 @@ st7036 = "*"
 
 [[package]]
 name = "filelock"
-version = "3.13.0"
+version = "3.13.1"
 description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "filelock-3.13.0-py3-none-any.whl", hash = "sha256:a552f4fde758f4eab33191e9548f671970f8b06d436d31388c9aa1e5861a710f"},
-    {file = "filelock-3.13.0.tar.gz", hash = "sha256:63c6052c82a1a24c873a549fbd39a26982e8f35a3016da231ead11a5be9dad44"},
+    {file = "filelock-3.13.1-py3-none-any.whl", hash = "sha256:57dbda9b35157b05fb3e58ee91448612eb674172fab98ee235ccb0b5bee19a1c"},
+    {file = "filelock-3.13.1.tar.gz", hash = "sha256:521f5f56c50f8426f5e03ad3b281b490a87ef15bc6c526f168290f0c7148d44e"},
 ]
 
 [package.extras]
@@ -593,13 +593,13 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 
 [[package]]
 name = "wg-utilities"
-version = "5.3.1"
+version = "5.4.0"
 description = "Loads of useful stuff for the things I do :)"
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "wg_utilities-5.3.1-py3-none-any.whl", hash = "sha256:7aca3e3a382cb2b3767a86a837ffced1cfe62355fb2b2465fd20e0738958f093"},
-    {file = "wg_utilities-5.3.1.tar.gz", hash = "sha256:2568ef58024dbc9cc402ec3fe23c943482cd9234296d50587a7608b81b688d02"},
+    {file = "wg_utilities-5.4.0-py3-none-any.whl", hash = "sha256:4c02a3a1e8bbbd768439a174eef7ad9f82104092d2682ef38be55d824a30a88c"},
+    {file = "wg_utilities-5.4.0.tar.gz", hash = "sha256:bf01f3e154a8253205b48da44bc41778b450a5b03a470f34748f9c6c1ac23094"},
 ]
 
 [package.dependencies]
