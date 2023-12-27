@@ -9,7 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 python-dotenv = "^1.0.0"
-wg-utilities = { extras = ["exceptions", "devices.dht22"], version = "^5.6.1" }
+wg-utilities = { extras = ["exceptions", "devices.dht22"], version = "^5.7.0" }
 paho-mqtt = "*"
 psutil = "*"
 pigpio = "*"
