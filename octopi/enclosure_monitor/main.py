@@ -22,7 +22,7 @@ load_dotenv()
 
 LOOP_DELAY_SECONDS = 30
 
-DHT22_PIN = 22
+DHT22_PIN = 6
 
 MQTT_AUTH_KWARGS = {
     "hostname": environ["MQTT_HOST"],
@@ -41,14 +41,16 @@ def main() -> int:
 
     while True:
         dht22.trigger()
+        sleep(1)
+        stats = dumps(
+            {
+                "temperature": round(dht22.temperature, 2),
+                "humidity": round(dht22.humidity, 2),
+            }
+        )
         single(
             "/homeassistant/octopi/dht22",
-            payload=dumps(
-                {
-                    "temperature": round(dht22.temperature, 2),
-                    "humidity": round(dht22.humidity, 2),
-                }
-            ),
+            payload=stats,
             **MQTT_AUTH_KWARGS,  # type: ignore[arg-type]
         )
         sleep(LOOP_DELAY_SECONDS)

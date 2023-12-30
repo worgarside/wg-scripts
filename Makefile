@@ -6,5 +6,5 @@ install:
 	.venv/bin/pip install -r requirements.txt
 
 update:
-	git pull
+	git pull --prune
 	@$(MAKE) install
