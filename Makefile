@@ -6,5 +6,7 @@ install:
 	.venv/bin/pip install -r requirements.txt
 
 update:
+	git add .
+	git stash -m "Stash before update @ $(shell date)"
 	git pull --prune
 	@$(MAKE) install
