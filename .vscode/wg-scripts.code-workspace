@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "SSH FS - OctoPi",
+			"uri": "ssh://octopi/"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.yaml": "home-assistant"
+		}
+	}
+}
