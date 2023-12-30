@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from logging import WARNING, getLogger
 from os import environ
-from typing import Any
+from typing import Any, Final, Literal
 
 from dotenv import load_dotenv
 from paho.mqtt.client import MQTTMessage
@@ -21,8 +21,8 @@ load_dotenv()
 
 PI = rasp_pi()
 
-FAN_PIN = 26
-FAN_MQTT_TOPIC = "/octopi/fan/state"
+FAN_PIN: Final[Literal[16]] = 16
+FAN_MQTT_TOPIC: Final[Literal["/prusa/enclosure/fan"]] = "/prusa/enclosure/fan"
 
 MQTT_HOST = environ["MQTT_HOST"]
 MQTT_USERNAME = environ["MQTT_USERNAME"]
@@ -47,7 +47,9 @@ def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
         )
 
     pin_value = value in ON_VALUES
+
     LOGGER.debug("Setting pin to %s", pin_value)
+
     PI.write(FAN_PIN, pin_value)
 
 

@@ -5,6 +5,7 @@ from json import dumps
 from logging import WARNING, getLogger
 from os import environ
 from time import sleep
+from typing import Final, Literal
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
@@ -24,7 +25,7 @@ PI = rasp_pi()
 
 LOOP_DELAY_SECONDS = 30
 
-DHT22_PIN = 6
+DHT22_PIN: Final[Literal[6]] = 6
 
 MQTT_HOST = environ["MQTT_HOST"]
 MQTT_USERNAME = environ["MQTT_USERNAME"]
