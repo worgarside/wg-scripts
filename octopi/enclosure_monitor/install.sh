@@ -1,8 +1,13 @@
 #!/bin/bash
 
-systemctl stop climate_monitor.service || :
-cp climate_monitor.service /etc/systemd/system/
-echo "Service file copied to /etc/systemd/system/climate_monitor.service"
-systemctl disable climate_monitor.service
-systemctl enable climate_monitor.service
-systemctl start climate_monitor.service
+systemctl stop enclosure_monitor.service || :
+
+cp enclosure_monitor.service /etc/systemd/system/
+
+echo "Service file copied to /etc/systemd/system/enclosure_monitor.service"
+
+systemctl disable enclosure_monitor.service
+
+systemctl enable enclosure_monitor.service
+
+systemctl start enclosure_monitor.service
