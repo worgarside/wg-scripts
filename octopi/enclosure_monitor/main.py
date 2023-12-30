@@ -8,7 +8,7 @@ from time import sleep
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
-from pigpio import pi  # type: ignore[import-not-found]
+from pigpio import pi as rasp_pi  # type: ignore[import-not-found]
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
@@ -20,24 +20,22 @@ add_warehouse_handler(LOGGER, level=WARNING)
 
 load_dotenv()
 
+PI = rasp_pi()
+
 LOOP_DELAY_SECONDS = 30
 
 DHT22_PIN = 6
 
-MQTT_AUTH_KWARGS = {
-    "hostname": environ["MQTT_HOST"],
-    "auth": {
-        "username": environ["MQTT_USERNAME"],
-        "password": environ["MQTT_PASSWORD"],
-    },
-}
+MQTT_HOST = environ["MQTT_HOST"]
+MQTT_USERNAME = environ["MQTT_USERNAME"]
+MQTT_PASSWORD = environ["MQTT_PASSWORD"]
 
 
 @process_exception(logger=LOGGER)
-def main() -> int:
+def main() -> None:
     """Take temp/humidity readings and upload them to HA."""
 
-    dht22 = DHT22Sensor(pi(), DHT22_PIN)
+    dht22 = DHT22Sensor(PI, DHT22_PIN)
 
     while True:
         dht22.trigger()
@@ -51,7 +49,11 @@ def main() -> int:
         single(
             "/homeassistant/octopi/dht22",
             payload=stats,
-            **MQTT_AUTH_KWARGS,  # type: ignore[arg-type]
+            hostname=MQTT_HOST,
+            auth={
+                "username": MQTT_USERNAME,
+                "password": MQTT_PASSWORD,
+            },
         )
         sleep(LOOP_DELAY_SECONDS)
 
