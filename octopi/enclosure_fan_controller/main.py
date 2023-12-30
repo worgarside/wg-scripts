@@ -22,7 +22,9 @@ load_dotenv()
 PI = rasp_pi()
 
 FAN_PIN: Final[Literal[16]] = 16
-FAN_MQTT_TOPIC: Final[Literal["/prusa/enclosure/fan"]] = "/prusa/enclosure/fan"
+FAN_MQTT_TOPIC: Final[
+    Literal["/prusa_i3_mk3/enclosure/fan"]
+] = "/prusa_i3_mk3/enclosure/fan"
 
 MQTT_HOST = environ["MQTT_HOST"]
 MQTT_USERNAME = environ["MQTT_USERNAME"]
