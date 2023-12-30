@@ -31,22 +31,32 @@ MQTT_HOST = environ["MQTT_HOST"]
 MQTT_USERNAME = environ["MQTT_USERNAME"]
 MQTT_PASSWORD = environ["MQTT_PASSWORD"]
 
+DHT22 = DHT22Sensor(PI, DHT22_PIN)
+
 
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Take temp/humidity readings and upload them to HA."""
 
-    dht22 = DHT22Sensor(PI, DHT22_PIN)
-
     while True:
-        dht22.trigger()
+        DHT22.trigger()
         sleep(1)
+
+        temp = round(DHT22.temperature, 2)
+        rhum = round(DHT22.humidity, 2)
+
+        if temp == DHT22.DEFAULT_TEMP_VALUE or rhum == DHT22.DEFAULT_RHUM_VALUE:
+            LOGGER.warning("Bad reading from DHT22")
+            sleep(LOOP_DELAY_SECONDS)
+            continue
+
         stats = dumps(
             {
-                "temperature": round(dht22.temperature, 2),
-                "humidity": round(dht22.humidity, 2),
+                "temperature": temp,
+                "humidity": rhum,
             }
         )
+
         single(
             "/homeassistant/octopi/dht22",
             payload=stats,
@@ -56,6 +66,7 @@ def main() -> None:
                 "password": MQTT_PASSWORD,
             },
         )
+
         sleep(LOOP_DELAY_SECONDS)
 
 
