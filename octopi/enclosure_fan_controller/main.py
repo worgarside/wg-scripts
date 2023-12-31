@@ -1,7 +1,7 @@
 """Module to take readings from DHT22 and report them to HA."""
 from __future__ import annotations
 
-from logging import WARNING, getLogger
+from logging import INFO, WARNING, getLogger
 from os import environ
 from typing import Any, Final, Literal
 
@@ -10,11 +10,12 @@ from paho.mqtt.client import MQTTMessage
 from paho.mqtt.subscribe import callback
 from pigpio import pi as rasp_pi  # type: ignore[import-not-found]
 from wg_utilities.decorators import process_exception
-from wg_utilities.loggers import add_warehouse_handler
+from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
 
+add_stream_handler(LOGGER, level=INFO)
 add_warehouse_handler(LOGGER, level=WARNING)
 
 load_dotenv()
@@ -50,7 +51,7 @@ def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
 
     pin_value = value in ON_VALUES
 
-    LOGGER.debug("Setting pin to %s", pin_value)
+    LOGGER.info("Setting pin to %s", pin_value)
 
     PI.write(FAN_PIN, pin_value)
 
