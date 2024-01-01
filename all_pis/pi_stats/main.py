@@ -6,11 +6,11 @@ from logging import WARNING, getLogger
 from os import getenv, getloadavg
 from pathlib import Path
 from socket import gethostname
-from time import sleep
+from time import sleep, time
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
-from psutil import cpu_percent, disk_usage, virtual_memory
+from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import run_cmd
 from wg_utilities.loggers import add_warehouse_handler
@@ -37,6 +37,7 @@ class RaspberryPi:
     """Class to represent a Pi and its current statistics."""
 
     def __init__(self) -> None:
+        self.boot_time = boot_time()
         self.hostname = gethostname()
 
     @property
@@ -85,6 +86,15 @@ class RaspberryPi:
         """
         return getloadavg()
 
+    @property
+    def uptime(self) -> int:
+        """Get the current uptime in seconds.
+
+        Returns:
+            int: the current uptime in seconds.
+        """
+        return int(time() - self.boot_time)
+
 
 @process_exception(logger=LOGGER)
 def main() -> None:
@@ -107,6 +117,8 @@ def main() -> None:
             "load_1m": load_1m,
             "load_5m": load_5m,
             "load_15m": load_15m,
+            "uptime": rasp_pi.uptime,
+            "boot_time": rasp_pi.boot_time,
         }
 
         try:
