@@ -8,6 +8,8 @@ echo "Service file copied to /etc/systemd/system/enclosure_monitor.service"
 
 systemctl disable enclosure_monitor.service
 
+systemctl daemon-reload
+
 systemctl enable enclosure_monitor.service
 
 systemctl start enclosure_monitor.service

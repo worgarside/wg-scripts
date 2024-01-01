@@ -8,6 +8,8 @@ echo "Service file copied to /etc/systemd/system/enclosure_fan_controller.servic
 
 systemctl disable enclosure_fan_controller.service
 
+systemctl daemon-reload
+
 systemctl enable enclosure_fan_controller.service
 
 systemctl start enclosure_fan_controller.service

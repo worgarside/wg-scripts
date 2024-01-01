@@ -6,6 +6,10 @@
 		{
 			"name": "SSH FS - OctoPi",
 			"uri": "ssh://octopi/home/pi"
+		},
+		{
+			"name": "SSH FS - RtroPi",
+			"uri": "ssh://rtropi/home/pi"
 		}
 	],
 	"settings": {
