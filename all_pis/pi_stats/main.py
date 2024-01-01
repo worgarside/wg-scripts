@@ -3,19 +3,17 @@ from __future__ import annotations
 
 from json import dumps
 from logging import WARNING, getLogger
-from os import getenv, getloadavg
-from pathlib import Path
+from os import environ, getloadavg
 from socket import gethostname
 from time import sleep
+from typing import Any, Final
 
 from dotenv import load_dotenv
-from paho.mqtt.publish import single
+from paho.mqtt.client import Client
 from psutil import cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
-from wg_utilities.functions import run_cmd
+from wg_utilities.functions import backoff, run_cmd
 from wg_utilities.loggers import add_warehouse_handler
-
-PROJECT_ROOT = Path(__file__).parents[2]
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
@@ -24,13 +22,12 @@ add_warehouse_handler(LOGGER, level=WARNING)
 
 load_dotenv()
 
-MQTT_AUTH_KWARGS = {
-    "hostname": getenv("MQTT_HOST"),
-    "auth": {
-        "username": getenv("MQTT_USERNAME"),
-        "password": getenv("MQTT_PASSWORD"),
-    },
-}
+MQTT = Client()
+MQTT.username_pw_set(
+    username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"]
+)
+
+MQTT_HOST = environ["MQTT_HOST"]
 
 
 class RaspberryPi:
@@ -38,6 +35,8 @@ class RaspberryPi:
 
     def __init__(self) -> None:
         self.hostname = gethostname()
+
+        self.stats_topic: Final[str] = f"/homeassistant/{self.hostname}/stats"
 
     @property
     def cpu_temp(self) -> float:
@@ -86,11 +85,29 @@ class RaspberryPi:
         return getloadavg()
 
 
+@MQTT.disconnect_callback()
+def on_disconnect(client: Client, userdata: dict[str, Any], rc: int) -> None:
+    """Callback for when the MQTT client disconnects."""
+    _ = client, userdata
+
+    if rc != 0:
+        LOGGER.error("Unexpected disconnection from MQTT broker: %s", rc)
+        backoff_reconnect()
+
+
+@backoff(logger=LOGGER, max_delay=10, timeout=120)
+def backoff_reconnect() -> None:
+    """Reconnect to the MQTT broker."""
+    MQTT.reconnect()
+
+
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Sends system stats to Home Assistant every minute."""
 
     rasp_pi = RaspberryPi()
+
+    MQTT.connect(MQTT_HOST)
 
     # This is done as a while loop, rather than a cron job, so that instantiating the
     # pi etc. every time doesn't influence the readings
@@ -110,10 +127,9 @@ def main() -> None:
         }
 
         try:
-            single(
-                f"/homeassistant/{rasp_pi.hostname}/stats",
+            MQTT.publish(
+                rasp_pi.stats_topic,
                 payload=dumps(stats),
-                **MQTT_AUTH_KWARGS,  # type: ignore[arg-type]
             )
         except TimeoutError:
             LOGGER.exception("%s timed out sending stats", rasp_pi.hostname)
