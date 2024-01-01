@@ -13,11 +13,12 @@ from paho.mqtt.client import Client
 from psutil import cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff, run_cmd
-from wg_utilities.loggers import add_warehouse_handler
+from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
 
+add_stream_handler(LOGGER)
 add_warehouse_handler(LOGGER, level=WARNING)
 
 load_dotenv()
