@@ -1,16 +1,17 @@
 """This script sends system stats to HA for use in system health stuff."""
 from __future__ import annotations
 
+from datetime import datetime
 from json import dumps
 from logging import WARNING, getLogger
 from os import environ, getloadavg
 from socket import gethostname
-from time import sleep
+from time import sleep, time
 from typing import Any, Final
 
 from dotenv import load_dotenv
 from paho.mqtt.client import Client
-from psutil import cpu_percent, disk_usage, virtual_memory
+from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff, run_cmd
 from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
@@ -35,6 +36,8 @@ class RaspberryPi:
     """Class to represent a Pi and its current statistics."""
 
     def __init__(self) -> None:
+        self.boot_time = boot_time()
+        self.boot_time_isoformat = datetime.fromtimestamp(self.boot_time).isoformat()
         self.hostname = gethostname()
 
         self.stats_topic: Final[str] = f"/homeassistant/{self.hostname}/stats"
@@ -84,6 +87,15 @@ class RaspberryPi:
             tuple: average recent system load information.
         """
         return getloadavg()
+
+    @property
+    def uptime(self) -> int:
+        """Get the current uptime in seconds.
+
+        Returns:
+            int: the current uptime in seconds.
+        """
+        return int(time() - self.boot_time)
 
 
 @MQTT.connect_callback()
@@ -141,6 +153,8 @@ def main() -> None:
             "load_1m": load_1m,
             "load_5m": load_5m,
             "load_15m": load_15m,
+            "uptime": rasp_pi.uptime,
+            "boot_time": rasp_pi.boot_time_isoformat,
         }
 
         try:
