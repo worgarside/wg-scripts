@@ -108,10 +108,15 @@ def main() -> None:
     rasp_pi = RaspberryPi()
 
     MQTT.connect(MQTT_HOST)
+    MQTT.loop_start()
 
     # This is done as a while loop, rather than a cron job, so that instantiating the
     # pi etc. every time doesn't influence the readings
     while True:
+        if not MQTT.is_connected():
+            LOGGER.warning("MQTT client is not connected. Reconnecting...")
+            backoff_reconnect()
+
         # Doing this first and separately so the other properties don't affect the
         # readings
         load_1m, load_5m, load_15m = rasp_pi.load_averages
