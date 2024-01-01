@@ -6,16 +6,11 @@ from logging import WARNING, getLogger
 from os import environ, getloadavg
 from socket import gethostname
 from time import sleep, time
-
-from dotenv import load_dotenv
-from paho.mqtt.publish import single
-from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
-from time import sleep
 from typing import Any, Final
 
 from dotenv import load_dotenv
 from paho.mqtt.client import Client
-from psutil import cpu_percent, disk_usage, virtual_memory
+from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff, run_cmd
 from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
