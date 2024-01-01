@@ -1,5 +1,5 @@
 [Unit]
-Description=Enclosure Monitor Service
+Description=Enclosure Fan Controller Service
 After=multi-user.target
 StartLimitBurst=10
 StartLimitIntervalSec=10

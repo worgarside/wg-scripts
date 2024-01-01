@@ -1,13 +1,13 @@
 #!/bin/bash
 
-systemctl stop fan_controller.service || :
+systemctl stop enclosure_fan_controller.service || :
 
-cp fan_controller.service /etc/systemd/system/
+cp enclosure_fan_controller.service /etc/systemd/system/
 
-echo "Service file copied to /etc/systemd/system/fan_controller.service"
+echo "Service file copied to /etc/systemd/system/enclosure_fan_controller.service"
 
-systemctl disable fan_controller.service
+systemctl disable enclosure_fan_controller.service
 
-systemctl enable fan_controller.service
+systemctl enable enclosure_fan_controller.service
 
-systemctl start fan_controller.service
+systemctl start enclosure_fan_controller.service
