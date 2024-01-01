@@ -243,6 +243,6 @@ st7036==1.4.4 ; python_version >= "3.11" and python_version < "4.0" and sys_plat
 urllib3==2.0.7 ; python_version >= "3.11" and python_version < "4.0" \
     --hash=sha256:c97dfde1f7bd43a71c8d2a58e369e9b2bf692d1334ea9f9cae55add7d0dd0f84 \
     --hash=sha256:fdb6d215c776278489906c2f8916e6e7d4f5a9b602ccbcfdf7f016fc8da0596e
-wg-utilities[devices-dht22,exceptions,functions,logging]==5.7.0 ; python_version >= "3.11" and python_version < "4.0" \
-    --hash=sha256:03b5b616900090e319ed22c4ce9119969917aa0913bda116ce3eb9e56e1e5d7c \
-    --hash=sha256:09b3631be0633f9f872385901f64f83a8c011cffaa9c96d51ff522a8098d57cc
+wg-utilities[devices-dht22,exceptions,functions,logging]==5.7.1 ; python_version >= "3.11" and python_version < "4.0" \
+    --hash=sha256:1f3e50eccafe50c1221fe5d2ad96dc47c1e4bc31cc1739fd12e51acd7a221356 \
+    --hash=sha256:957d9b6f255556c12ad66692ae1a157dbf9a45d0b8fb9919e59c1524457471b1

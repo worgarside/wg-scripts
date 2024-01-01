@@ -19,6 +19,8 @@ from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
 
 LOGGER = getLogger(__name__)
+LOGGER.setLevel("INFO")
+
 add_warehouse_handler(LOGGER, level=WARNING)
 
 try:
@@ -108,9 +110,6 @@ except ImportError:
 
 
 load_dotenv()
-
-LOGGER = getLogger(__name__)
-LOGGER.setLevel("INFO")
 
 
 LOOP_DELAY_SECONDS = 30
