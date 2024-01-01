@@ -1,6 +1,7 @@
 """This script sends system stats to HA for use in system health stuff."""
 from __future__ import annotations
 
+from datetime import datetime
 from json import dumps
 from logging import WARNING, getLogger
 from os import environ, getloadavg
@@ -36,6 +37,7 @@ class RaspberryPi:
 
     def __init__(self) -> None:
         self.boot_time = boot_time()
+        self.boot_time_isoformat = datetime.fromtimestamp(self.boot_time).isoformat()
         self.hostname = gethostname()
 
         self.stats_topic: Final[str] = f"/homeassistant/{self.hostname}/stats"
@@ -152,7 +154,7 @@ def main() -> None:
             "load_5m": load_5m,
             "load_15m": load_15m,
             "uptime": rasp_pi.uptime,
-            "boot_time": rasp_pi.boot_time,
+            "boot_time": rasp_pi.boot_time_isoformat,
         }
 
         try:
