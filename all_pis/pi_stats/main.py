@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from functools import lru_cache
 from json import dumps
 from logging import WARNING, getLogger
 from os import environ, getloadavg
 from socket import gethostname
 from time import sleep, time
-from typing import Any, Final
+from typing import Any, Final, TypedDict
 
 from dotenv import load_dotenv
 from paho.mqtt.client import Client
@@ -29,18 +30,80 @@ MQTT.username_pw_set(
     username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"]
 )
 
-MQTT_HOST = environ["MQTT_HOST"]
+MQTT_HOST: Final[str] = environ["MQTT_HOST"]
+
+ONE_MINUTE: Final[int] = 60
+
+
+class Stats(TypedDict):
+    """Type definition for the stats dictionary."""
+
+    cpu_usage: float
+    memory_usage: float
+    temperature: float
+    disk_usage_percent: float
+    load_1m: float
+    load_5m: float
+    load_15m: float
+    uptime: int
+    boot_time: str
+    local_git_ref: str
+    active_git_ref: str
+
+
+@lru_cache(maxsize=1)
+def local_git_ref() -> str:
+    """Get the current git ref for the local repo."""
+    output, error = run_cmd("git describe --tags --exact-match", exit_on_error=False)
+
+    if "no tag exactly matches" in error:
+        output, _ = run_cmd("git rev-parse --short HEAD")
+
+    return output.strip()
 
 
 class RaspberryPi:
     """Class to represent a Pi and its current statistics."""
 
-    def __init__(self) -> None:
-        self.boot_time = boot_time()
-        self.boot_time_isoformat = datetime.fromtimestamp(self.boot_time).isoformat()
-        self.hostname = gethostname()
+    ACTIVE_GIT_REF: Final[str] = local_git_ref()
 
-        self.stats_topic: Final[str] = f"/homeassistant/{self.hostname}/stats"
+    BOOT_TIME: Final[float] = boot_time()
+    BOOT_TIME_ISOFORMAT: Final[str] = datetime.fromtimestamp(BOOT_TIME).isoformat()
+    HOSTNAME: Final[str] = gethostname()
+
+    STATS_TOPIC: Final[str] = f"/homeassistant/{HOSTNAME}/stats"
+
+    def get_stats(self) -> Stats:
+        """Get the current stats for the Pi.
+
+        Returns:
+            Stats: the current stats for the Pi.
+        """
+
+        # Doing this first and separately so the other properties don't affect the
+        # readings
+        load_1m, load_5m, load_15m = self.load_averages
+        cpu_usage = self.cpu_usage
+        memory_usage = self.memory_usage
+        temperature = self.cpu_temp
+        uptime = self.uptime
+
+        if uptime % 300 < ONE_MINUTE:
+            local_git_ref.cache_clear()
+
+        return Stats(
+            cpu_usage=cpu_usage,
+            memory_usage=memory_usage,
+            temperature=temperature,
+            disk_usage_percent=self.disk_usage_percent,
+            load_1m=load_1m,
+            load_5m=load_5m,
+            load_15m=load_15m,
+            uptime=uptime,
+            boot_time=self.BOOT_TIME_ISOFORMAT,
+            local_git_ref=local_git_ref(),
+            active_git_ref=self.ACTIVE_GIT_REF,
+        )
 
     @property
     def cpu_temp(self) -> float:
@@ -95,7 +158,7 @@ class RaspberryPi:
         Returns:
             int: the current uptime in seconds.
         """
-        return int(time() - self.boot_time)
+        return int(time() - self.BOOT_TIME)
 
 
 @MQTT.connect_callback()
@@ -141,31 +204,15 @@ def main() -> None:
             LOGGER.warning("MQTT client is not connected. Reconnecting...")
             backoff_reconnect()
 
-        # Doing this first and separately so the other properties don't affect the
-        # readings
-        load_1m, load_5m, load_15m = rasp_pi.load_averages
-
-        stats = {
-            "cpu_usage": rasp_pi.cpu_usage,
-            "memory_usage": rasp_pi.memory_usage,
-            "temperature": rasp_pi.cpu_temp,
-            "disk_usage_percent": rasp_pi.disk_usage_percent,
-            "load_1m": load_1m,
-            "load_5m": load_5m,
-            "load_15m": load_15m,
-            "uptime": rasp_pi.uptime,
-            "boot_time": rasp_pi.boot_time_isoformat,
-        }
-
         try:
             MQTT.publish(
-                rasp_pi.stats_topic,
-                payload=dumps(stats),
+                rasp_pi.STATS_TOPIC,
+                payload=dumps(rasp_pi.get_stats()),
             )
         except TimeoutError:
-            LOGGER.exception("%s timed out sending stats", rasp_pi.hostname)
+            LOGGER.exception("%s timed out sending stats", rasp_pi.HOSTNAME)
 
-        sleep(60)
+        sleep(ONE_MINUTE)
 
 
 if __name__ == "__main__":
