@@ -86,6 +86,17 @@ class RaspberryPi:
         return getloadavg()
 
 
+@MQTT.connect_callback()
+def on_connect(client: Client, userdata: dict[str, Any], flags: Any, rc: int) -> None:
+    """Callback for when the MQTT client connects."""
+    _ = client, userdata, flags
+
+    if rc == 0:
+        LOGGER.info("Connected to MQTT broker")
+    else:
+        LOGGER.error("Failed to connect to MQTT broker: %s", rc)
+
+
 @MQTT.disconnect_callback()
 def on_disconnect(client: Client, userdata: dict[str, Any], rc: int) -> None:
     """Callback for when the MQTT client disconnects."""
