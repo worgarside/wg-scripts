@@ -7,6 +7,6 @@ install:
 
 update:
 	git add .
-	git stash -m "Stash before update @ $(shell date)"
+	git stash -m "Stash before update @ $(shell date)" || :
 	git pull --prune
 	@$(MAKE) install
