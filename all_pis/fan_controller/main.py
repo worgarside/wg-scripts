@@ -71,6 +71,8 @@ def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
             f"{ON_VALUES + OFF_VALUES}"
         )
 
+    LOGGER.info("Received message: %s", value)
+
     pin_value = value in ON_VALUES
 
     LOGGER.debug("Setting pin to %s", pin_value)
