@@ -57,7 +57,7 @@ def publish_state(state: bool | NewPinState) -> None:
     LOGGER.info("Published state '%s' to topic '%s'", state, FAN_MQTT_TOPIC)
 
 
-@process_exception(logger=LOGGER)
+@MQTT.message_callback()
 def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
     """Process env vars on MQTT message.
 
@@ -123,6 +123,8 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
 def main() -> None:
     """Main function."""
     MQTT.connect(MQTT_HOST)
+
+    MQTT.subscribe(FAN_MQTT_TOPIC)
 
     PI.callback(FAN_PIN, EITHER_EDGE, pin_callback)
 
