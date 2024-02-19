@@ -1,4 +1,5 @@
 """This script sends system stats to HA for use in system health stuff."""
+
 from __future__ import annotations
 
 from datetime import datetime

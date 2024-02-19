@@ -1,4 +1,5 @@
 """Module to take readings from DHT22 and report them to HA."""
+
 from __future__ import annotations
 
 from logging import INFO, WARNING, getLogger
@@ -23,9 +24,9 @@ load_dotenv()
 PI = rasp_pi()
 
 FAN_PIN: Final[Literal[16]] = 16
-FAN_MQTT_TOPIC: Final[
-    Literal["/prusa_i3_mk3/enclosure/fan/state"]
-] = "/prusa_i3_mk3/enclosure/fan/state"
+FAN_MQTT_TOPIC: Final[Literal["/prusa_i3_mk3/enclosure/fan/state"]] = (
+    "/prusa_i3_mk3/enclosure/fan/state"
+)
 
 MQTT_HOST = environ["MQTT_HOST"]
 MQTT_USERNAME = environ["MQTT_USERNAME"]

@@ -1,4 +1,5 @@
 """Module to take readings from DHT22 and report them to HA."""
+
 from __future__ import annotations
 
 import platform
