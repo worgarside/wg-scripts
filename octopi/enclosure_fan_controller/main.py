@@ -4,14 +4,16 @@ from __future__ import annotations
 
 from logging import INFO, WARNING, getLogger
 from os import environ
-from typing import Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from dotenv import load_dotenv
-from paho.mqtt.client import MQTTMessage
 from paho.mqtt.subscribe import callback
-from pigpio import pi as rasp_pi  # type: ignore[import-not-found]
+from pigpio import pi as rasp_pi  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
+
+if TYPE_CHECKING:
+    from paho.mqtt.client import MQTTMessage
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")

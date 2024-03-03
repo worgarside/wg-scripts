@@ -27,9 +27,7 @@ add_warehouse_handler(LOGGER, level=WARNING)
 load_dotenv()
 
 MQTT = Client()
-MQTT.username_pw_set(
-    username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"]
-)
+MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
 
 MQTT_HOST: Final[str] = environ["MQTT_HOST"]
 

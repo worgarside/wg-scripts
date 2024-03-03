@@ -3,21 +3,23 @@
 from __future__ import annotations
 
 import platform
-from collections.abc import Iterator
 from colorsys import hsv_to_rgb
 from datetime import datetime
 from json import dumps
 from logging import WARNING, getLogger
 from os import getenv
 from time import sleep
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
-from pigpio import pi  # type: ignore[import-not-found]
+from pigpio import pi  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
@@ -31,7 +33,6 @@ except ImportError:
     if platform.system() != "Darwin":
         raise
 
-    # pylint: disable=invalid-name
     class dot3k_lcd:  # type: ignore[no-redef]  # noqa: N801
         """Dummy class for lcd import on non-Pi machine."""
 
@@ -40,9 +41,7 @@ except ImportError:
             """Dummy function for clearing the LCD."""
 
         @staticmethod
-        def create_animation(
-            anim_pos: int, anim_map: list[Any], frame_rate: int
-        ) -> None:
+        def create_animation(anim_pos: int, anim_map: list[Any], frame_rate: int) -> None:
             """Dummy function for creating an animation."""
 
         @staticmethod
@@ -74,7 +73,7 @@ except ImportError:
 
         def ChangeDutyCycle(  # noqa: N802
             self, value: float
-        ) -> None:  # pylint: disable=invalid-name
+        ) -> None:
             """Dummy function."""
 
         def start(self, value: int) -> None:
@@ -104,7 +103,7 @@ except ImportError:
         @staticmethod
         def PWM(  # noqa: N802
             pin: int, mode: int
-        ) -> GpioPin:  # pylint: disable=invalid-name
+        ) -> GpioPin:
             """Dummy function."""
             _ = pin, mode
             return GpioPin()
