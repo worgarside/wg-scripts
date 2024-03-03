@@ -21,7 +21,7 @@ repos:
         additional_dependencies:
           # - dot3k
           - pigpio==1.78
-          - python-dotenv==1.0.0
+          - python-dotenv==1.0.1
           # - rpi.gpio
           - types-paho-mqtt
           - types-psutil
