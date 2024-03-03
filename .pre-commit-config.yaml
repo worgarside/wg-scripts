@@ -26,7 +26,7 @@ repos:
           - types-paho-mqtt
           - types-psutil
           - types-requests
-          - wg-utilities==5.7.1
+          - wg-utilities==5.14.1
 
   - repo: https://github.com/python-poetry/poetry
     rev: 1.8.0
