@@ -194,8 +194,9 @@ lxml==4.9.4 ; python_version >= "3.11" and python_version < "4.0" \
     --hash=sha256:f99768232f036b4776ce419d3244a04fe83784bce871b16d2c2e984c7fcea847 \
     --hash=sha256:fd814847901df6e8de13ce69b84c31fc9b3fb591224d6762d0b256d510cbf382 \
     --hash=sha256:fdb325b7fba1e2c40b9b1db407f85642e32404131c08480dd652110fc908561b
-paho-mqtt==1.6.1 ; python_version >= "3.11" and python_version < "4.0" \
-    --hash=sha256:2a8291c81623aec00372b5a85558a372c747cbca8e9934dfe218638b8eefc26f
+paho-mqtt==2.0.0 ; python_version >= "3.11" and python_version < "4.0" \
+    --hash=sha256:13b205f29251e4f2c66a6c923c31fc4fd780561e03b2d775cff8e4f2915cf947 \
+    --hash=sha256:2ef745073dfc9aa68bfec30d0b9b6f0304ea75182bae85a7c77a80cefce1eff5
 pigpio==1.78 ; python_version >= "3.11" and python_version < "4.0" \
     --hash=sha256:81e46f640c4e6342881fa9bbe290dbcd4fc179619dc6591e57a9d4a084dc49fa \
     --hash=sha256:91efa50e4990649da97408a384782d6ccf58342fc59cdfe21ed7a42911569975
