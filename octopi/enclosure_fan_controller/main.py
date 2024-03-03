@@ -1,16 +1,19 @@
 """Module to take readings from DHT22 and report them to HA."""
+
 from __future__ import annotations
 
 from logging import INFO, WARNING, getLogger
 from os import environ
-from typing import Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from dotenv import load_dotenv
-from paho.mqtt.client import MQTTMessage
 from paho.mqtt.subscribe import callback
-from pigpio import pi as rasp_pi  # type: ignore[import-not-found]
+from pigpio import pi as rasp_pi  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
+
+if TYPE_CHECKING:
+    from paho.mqtt.client import MQTTMessage
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
@@ -23,9 +26,9 @@ load_dotenv()
 PI = rasp_pi()
 
 FAN_PIN: Final[Literal[16]] = 16
-FAN_MQTT_TOPIC: Final[
-    Literal["/prusa_i3_mk3/enclosure/fan/state"]
-] = "/prusa_i3_mk3/enclosure/fan/state"
+FAN_MQTT_TOPIC: Final[Literal["/prusa_i3_mk3/enclosure/fan/state"]] = (
+    "/prusa_i3_mk3/enclosure/fan/state"
+)
 
 MQTT_HOST = environ["MQTT_HOST"]
 MQTT_USERNAME = environ["MQTT_USERNAME"]

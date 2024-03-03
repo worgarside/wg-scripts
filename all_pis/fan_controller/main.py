@@ -1,4 +1,5 @@
 """Module to take readings from DHT22 and report them to HA."""
+
 from __future__ import annotations
 
 from enum import IntEnum
@@ -8,7 +9,7 @@ from typing import Any, Final
 
 from dotenv import load_dotenv
 from paho.mqtt.client import Client, MQTTMessage
-from pigpio import EITHER_EDGE  # type: ignore[import-not-found]
+from pigpio import EITHER_EDGE  # type: ignore[import-untyped]
 from pigpio import pi as rasp_pi
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff
@@ -23,9 +24,7 @@ add_warehouse_handler(LOGGER, level=WARNING)
 load_dotenv()
 
 MQTT = Client()
-MQTT.username_pw_set(
-    username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"]
-)
+MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
 
 MQTT_HOST: Final[str] = environ["MQTT_HOST"]
 

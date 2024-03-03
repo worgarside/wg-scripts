@@ -1,4 +1,5 @@
 """Module to take readings from DHT22 and report them to HA."""
+
 from __future__ import annotations
 
 from json import dumps
@@ -9,7 +10,7 @@ from typing import Final, Literal
 
 from dotenv import load_dotenv
 from paho.mqtt.publish import single
-from pigpio import pi as rasp_pi  # type: ignore[import-not-found]
+from pigpio import pi as rasp_pi  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
