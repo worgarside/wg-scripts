@@ -66,7 +66,7 @@ def setup_callback() -> None:
     This is only in a function to allow decoration.
     """
     LOGGER.info("Creating callback function")
-    callback(
+    callback(  # type: ignore[no-untyped-call]
         on_message,
         [FAN_MQTT_TOPIC],
         hostname=MQTT_HOST,

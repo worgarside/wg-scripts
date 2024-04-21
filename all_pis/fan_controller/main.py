@@ -7,8 +7,9 @@ from logging import WARNING, getLogger
 from os import environ
 from typing import Any, Final
 
+import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
-from paho.mqtt.client import Client, MQTTMessage
+from paho.mqtt.enums import CallbackAPIVersion
 from pigpio import EITHER_EDGE  # type: ignore[import-untyped]
 from pigpio import pi as rasp_pi
 from wg_utilities.decorators import process_exception
@@ -23,7 +24,7 @@ add_warehouse_handler(LOGGER, level=WARNING)
 
 load_dotenv()
 
-MQTT = Client()
+MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
 
 MQTT_HOST: Final[str] = environ["MQTT_HOST"]
@@ -57,7 +58,7 @@ def publish_state(state: bool | NewPinState) -> None:
 
 
 @MQTT.message_callback()
-def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
+def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
     """Process env vars on MQTT message.
 
     Args:
@@ -80,7 +81,9 @@ def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
 
 
 @MQTT.connect_callback()
-def on_connect(client: Client, userdata: dict[str, Any], flags: Any, rc: int) -> None:
+def on_connect(
+    client: mqtt.Client, userdata: dict[str, Any], flags: Any, rc: int
+) -> None:
     """Callback for when the MQTT client connects."""
     _ = client, userdata, flags
 
@@ -91,7 +94,7 @@ def on_connect(client: Client, userdata: dict[str, Any], flags: Any, rc: int) ->
 
 
 @MQTT.disconnect_callback()
-def on_disconnect(client: Client, userdata: dict[str, Any], rc: int) -> None:
+def on_disconnect(client: mqtt.Client, userdata: dict[str, Any], rc: int) -> None:
     """Callback for when the MQTT client disconnects."""
     _ = client, userdata
 

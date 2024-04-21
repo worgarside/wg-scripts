@@ -9,14 +9,19 @@ from logging import WARNING, getLogger
 from os import environ, getloadavg
 from socket import gethostname
 from time import sleep, time
-from typing import Any, Final, TypedDict
+from typing import TYPE_CHECKING, Any, Final, TypedDict
 
+import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
-from paho.mqtt.client import Client
+from paho.mqtt.enums import CallbackAPIVersion
 from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff, run_cmd
 from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
+
+if TYPE_CHECKING:
+    from paho.mqtt.properties import Properties
+    from paho.mqtt.reasoncodes import ReasonCode
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
@@ -26,7 +31,7 @@ add_warehouse_handler(LOGGER, level=WARNING)
 
 load_dotenv()
 
-MQTT = Client()
+MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
 
 MQTT_HOST: Final[str] = environ["MQTT_HOST"]
@@ -161,9 +166,15 @@ class RaspberryPi:
 
 
 @MQTT.connect_callback()
-def on_connect(client: Client, userdata: dict[str, Any], flags: Any, rc: int) -> None:
+def on_connect(
+    client: mqtt.Client,
+    userdata: Any,
+    flags: mqtt.ConnectFlags,
+    rc: ReasonCode,
+    properties: Properties | None,
+) -> None:
     """Callback for when the MQTT client connects."""
-    _ = client, userdata, flags
+    _ = client, userdata, flags, properties
 
     if rc == 0:
         LOGGER.info("Connected to MQTT broker")
@@ -172,12 +183,18 @@ def on_connect(client: Client, userdata: dict[str, Any], flags: Any, rc: int) ->
 
 
 @MQTT.disconnect_callback()
-def on_disconnect(client: Client, userdata: dict[str, Any], rc: int) -> None:
+def on_disconnect(
+    client: mqtt.Client,
+    userdata: Any,
+    flags: mqtt.DisconnectFlags,
+    rc: ReasonCode,
+    properties: Properties | None,
+) -> None:
     """Callback for when the MQTT client disconnects."""
-    _ = client, userdata
+    _ = client, userdata, flags, properties
 
     if rc != 0:
-        LOGGER.error("Unexpected disconnection from MQTT broker: %s", rc)
+        LOGGER.error("Unexpected disconnection from MQTT broker: %r", rc)
         backoff_reconnect()
 
 
