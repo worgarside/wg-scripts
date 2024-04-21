@@ -12,7 +12,6 @@ python-dotenv = "^1.0.1"
 wg-utilities = { extras = [
   "devices.dht22",
   "exceptions",
-  "functions",
   "logging",
 ], version = "^5.7.0" }
 paho-mqtt = "*"
