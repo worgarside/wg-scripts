@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import socket
 from datetime import datetime
 from functools import lru_cache
 from json import dumps
 from logging import WARNING, getLogger
 from os import environ, getloadavg
-from socket import gethostname
 from time import sleep, time
 from typing import TYPE_CHECKING, Any, Final, TypedDict
 
@@ -53,6 +53,7 @@ class Stats(TypedDict):
     boot_time: str
     local_git_ref: str
     active_git_ref: str
+    local_ip: str | None
 
 
 @lru_cache(maxsize=1)
@@ -66,6 +67,29 @@ def local_git_ref() -> str:
     return output.strip()
 
 
+@lru_cache(maxsize=1)
+def local_ip() -> str | None:
+    """Get the local IP address of the Pi.
+
+    https://stackoverflow.com/a/28950776/7689800
+    """
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0)
+
+    try:
+        s.connect(("10.254.254.254", 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = None
+    finally:
+        s.close()
+
+    if not ip:
+        return None
+
+    return str(ip)
+
+
 class RaspberryPi:
     """Class to represent a Pi and its current statistics."""
 
@@ -73,7 +97,7 @@ class RaspberryPi:
 
     BOOT_TIME: Final[float] = boot_time()
     BOOT_TIME_ISOFORMAT: Final[str] = datetime.fromtimestamp(BOOT_TIME).isoformat()
-    HOSTNAME: Final[str] = gethostname()
+    HOSTNAME: Final[str] = socket.gethostname()
 
     STATS_TOPIC: Final[str] = f"/homeassistant/{HOSTNAME}/stats"
 
@@ -94,6 +118,7 @@ class RaspberryPi:
 
         if uptime % 300 < ONE_MINUTE:
             local_git_ref.cache_clear()
+            local_ip.cache_clear()
 
         return Stats(
             cpu_usage=cpu_usage,
@@ -107,6 +132,7 @@ class RaspberryPi:
             boot_time=self.BOOT_TIME_ISOFORMAT,
             local_git_ref=local_git_ref(),
             active_git_ref=self.ACTIVE_GIT_REF,
+            local_ip=local_ip(),
         )
 
     @property
