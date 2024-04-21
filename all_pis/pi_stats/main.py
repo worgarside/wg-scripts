@@ -11,8 +11,9 @@ from socket import gethostname
 from time import sleep, time
 from typing import Any, Final, TypedDict
 
+import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
-from paho.mqtt.client import Client
+from paho.mqtt.enums import CallbackAPIVersion
 from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff, run_cmd
@@ -26,7 +27,7 @@ add_warehouse_handler(LOGGER, level=WARNING)
 
 load_dotenv()
 
-MQTT = Client()
+MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
 
 MQTT_HOST: Final[str] = environ["MQTT_HOST"]
@@ -161,7 +162,9 @@ class RaspberryPi:
 
 
 @MQTT.connect_callback()
-def on_connect(client: Client, userdata: dict[str, Any], flags: Any, rc: int) -> None:
+def on_connect(
+    client: mqtt.Client, userdata: dict[str, Any], flags: Any, rc: int
+) -> None:
     """Callback for when the MQTT client connects."""
     _ = client, userdata, flags
 
@@ -172,7 +175,7 @@ def on_connect(client: Client, userdata: dict[str, Any], flags: Any, rc: int) ->
 
 
 @MQTT.disconnect_callback()
-def on_disconnect(client: Client, userdata: dict[str, Any], rc: int) -> None:
+def on_disconnect(client: mqtt.Client, userdata: dict[str, Any], rc: int) -> None:
     """Callback for when the MQTT client disconnects."""
     _ = client, userdata
 

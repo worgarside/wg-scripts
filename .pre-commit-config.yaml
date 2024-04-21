@@ -20,10 +20,10 @@ repos:
           - --show-error-codes
         additional_dependencies:
           # - dot3k
+          - paho-mqtt==2.0.0
           - pigpio==1.78
           - python-dotenv==1.0.1
           # - rpi.gpio
-          - types-paho-mqtt
           - types-psutil
           - types-requests
           - wg-utilities==5.14.1
