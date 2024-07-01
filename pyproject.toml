@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "wg-scripts"
-version = "0.5.0"
+version = "0.5.1"
 description = ""
 authors = ["Will Garside <worgarside@gmail.com>"]
 license = "MIT"
