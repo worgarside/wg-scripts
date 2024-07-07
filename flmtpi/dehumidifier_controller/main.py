@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import IntEnum
 from logging import getLogger
 from os import environ
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
@@ -14,6 +14,10 @@ from pigpio import pi as rasp_pi
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff
 from wg_utilities.loggers import add_stream_handler
+
+if TYPE_CHECKING:
+    from paho.mqtt.properties import Properties
+    from paho.mqtt.reasoncodes import ReasonCode
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
@@ -78,10 +82,14 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
 @MQTT.connect_callback()
 def on_connect(
-    client: mqtt.Client, userdata: dict[str, Any], flags: Any, rc: int
+    client: mqtt.Client,
+    userdata: Any,
+    flags: mqtt.ConnectFlags,
+    rc: ReasonCode,
+    properties: Properties | None,
 ) -> None:
     """Callback for when the MQTT client connects."""
-    _ = client, userdata, flags
+    _ = client, userdata, flags, properties
 
     if rc == 0:
         LOGGER.info("Connected to MQTT broker")
@@ -90,12 +98,18 @@ def on_connect(
 
 
 @MQTT.disconnect_callback()
-def on_disconnect(client: mqtt.Client, userdata: dict[str, Any], rc: int) -> None:
+def on_disconnect(
+    client: mqtt.Client,
+    userdata: Any,
+    flags: mqtt.DisconnectFlags,
+    rc: ReasonCode,
+    properties: Properties | None,
+) -> None:
     """Callback for when the MQTT client disconnects."""
-    _ = client, userdata
+    _ = client, userdata, flags, properties
 
     if rc != 0:
-        LOGGER.error("Unexpected disconnection from MQTT broker: %s", rc)
+        LOGGER.error("Unexpected disconnection from MQTT broker: %r", rc)
         backoff_reconnect()
 
 
