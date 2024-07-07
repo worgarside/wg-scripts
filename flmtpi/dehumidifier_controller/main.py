@@ -34,8 +34,8 @@ PI = rasp_pi()
 FAN_PIN: Final[int] = 26
 MQTT_TOPIC = environ["DEHUMIDIFIER_CONTROLLER_MQTT_TOPIC"]
 
-ON_VALUES = (True, 1, "1", "on", "true", "True")
-OFF_VALUES = (False, 0, "0", "off", "false", "False")
+ON_VALUES = (True, 1, "1", "on", "true")
+OFF_VALUES = (False, 0, "0", "off", "false")
 
 
 class NewPinState(IntEnum):
@@ -73,7 +73,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
     LOGGER.info("Received message: %s", value)
 
-    pin_value = value in ON_VALUES
+    pin_value = value.casefold() in ON_VALUES
 
     LOGGER.debug("Setting pin to %s", pin_value)
 
