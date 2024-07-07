@@ -25,3 +25,10 @@ stop:
 
 tail:
 	clear && sudo journalctl -u dehumidifier_controller.service -f -n 50
+
+
+include ../../.env
+export
+
+run:
+	../../.venv/bin/python main.py
