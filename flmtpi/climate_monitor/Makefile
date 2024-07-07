@@ -9,6 +9,9 @@ install:
 	sudo cp climate_monitor.service /etc/systemd/system/
 	sudo systemctl daemon-reload
 
+install-dot3k:
+	sudo bash pimoroni/dot3k
+
 restart:
 	sudo systemctl restart climate_monitor.service
 
