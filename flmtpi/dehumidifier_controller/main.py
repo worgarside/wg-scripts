@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from logging import WARNING, getLogger
+from logging import getLogger
 from os import environ
 from typing import Any, Final
 
@@ -13,13 +13,12 @@ from pigpio import EITHER_EDGE  # type: ignore[import-untyped]
 from pigpio import pi as rasp_pi
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff
-from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
+from wg_utilities.loggers import add_stream_handler
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
 
 add_stream_handler(LOGGER)
-add_warehouse_handler(LOGGER, level=WARNING)
 
 MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
@@ -28,8 +27,8 @@ MQTT_HOST: Final[str] = environ["MQTT_HOST"]
 
 PI = rasp_pi()
 
-FAN_PIN: Final[int] = int(environ["FAN_PIN"])
-FAN_MQTT_TOPIC = environ["FAN_MQTT_TOPIC"]
+FAN_PIN: Final[int] = 26
+MQTT_TOPIC = environ["DEHUMIDIFIER_CONTROLLER_MQTT_TOPIC"]
 
 ON_VALUES = (True, 1, "1", "on", "true", "True")
 OFF_VALUES = (False, 0, "0", "off", "false", "False")
@@ -49,9 +48,9 @@ def publish_state(state: bool | NewPinState) -> None:
     if state == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
 
-    MQTT.publish(FAN_MQTT_TOPIC, bool(state))
+    MQTT.publish(MQTT_TOPIC, bool(state))
 
-    LOGGER.info("Published state '%s' to topic '%s'", state, FAN_MQTT_TOPIC)
+    LOGGER.info("Published state '%s' to topic '%s'", state, MQTT_TOPIC)
 
 
 @MQTT.message_callback()
@@ -123,7 +122,7 @@ def main() -> None:
     """Main function."""
     MQTT.connect(MQTT_HOST)
 
-    MQTT.subscribe(FAN_MQTT_TOPIC)
+    MQTT.subscribe(MQTT_TOPIC)
 
     PI.callback(FAN_PIN, EITHER_EDGE, pin_callback)
 
