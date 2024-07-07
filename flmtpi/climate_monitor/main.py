@@ -265,7 +265,7 @@ def main() -> None:
                 ]
             )
             single(
-                "/homeassistant/clmtpi/dht22",
+                "/homeassistant/flmtpi/dht22",
                 payload=dumps(
                     {
                         "temperature": round(dht22.temperature, 2),
