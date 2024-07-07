@@ -1,5 +1,8 @@
 PYTHON_VERSION ?= 3.11
 
+clean:
+	sudo rm -rf .venv
+
 create-env:
 	virtualenv -p $(PYTHON_VERSION) .venv
 	$(MAKE) install
