@@ -65,7 +65,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
         message (MQTTMessage): the message object from the MQTT subscription
     """
 
-    if (value := message.payload.decode()) not in ON_VALUES + OFF_VALUES:
+    if (value := message.payload.decode().casefold()) not in ON_VALUES + OFF_VALUES:
         raise ValueError(
             f"Invalid value received ({value}). Must be one of: "
             f"{ON_VALUES + OFF_VALUES}"
@@ -73,7 +73,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
     LOGGER.info("Received message: %s", value)
 
-    pin_value = value.casefold() in ON_VALUES
+    pin_value = value in ON_VALUES
 
     LOGGER.debug("Setting pin to %s", pin_value)
 
