@@ -74,10 +74,9 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
     LOGGER.info("Received message: %s", value)
 
-    if value in ON_VALUES + OFF_VALUES:
-        PI.write(SOLENOID, level=True)
-        sleep(0.2)
-        PI.write(SOLENOID, level=False)
+    PI.write(SOLENOID, level=True)
+    sleep(0.2)
+    PI.write(SOLENOID, level=False)
 
 
 @MQTT.connect_callback()
@@ -128,7 +127,10 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
 
     LOGGER.debug("Pin %s changed state to %s", gpio, level)
 
-    publish_state(level)
+    if level == NewPinState.ON:
+        # Safety feature to prevent the solenoid from being on for too long
+        sleep(1)
+        PI.write(SOLENOID, level=False)
 
 
 @process_exception(logger=LOGGER)
