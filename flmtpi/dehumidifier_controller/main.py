@@ -38,6 +38,8 @@ MQTT_TOPIC = environ["DEHUMIDIFIER_CONTROLLER_MQTT_TOPIC"]
 ON_VALUES = (True, 1, "1", "on", "true")
 OFF_VALUES = (False, 0, "0", "off", "false")
 
+CURRENT_STATE: bool = False
+
 
 class NewPinState(IntEnum):
     """Enum for the possible states of the pin."""
@@ -65,6 +67,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
     Args:
         message (MQTTMessage): the message object from the MQTT subscription
     """
+    global CURRENT_STATE  # noqa: PLW0603
 
     if (value := message.payload.decode().casefold()) not in ON_VALUES + OFF_VALUES:
         raise ValueError(
@@ -74,9 +77,11 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
     LOGGER.info("Received message: %s", value)
 
-    PI.write(SOLENOID, level=True)
-    sleep(1)
-    PI.write(SOLENOID, level=False)
+    if value in (OFF_VALUES if CURRENT_STATE else ON_VALUES):
+        PI.write(SOLENOID, level=True)
+        CURRENT_STATE = not CURRENT_STATE
+        sleep(1)
+        PI.write(SOLENOID, level=False)
 
 
 @MQTT.connect_callback()
