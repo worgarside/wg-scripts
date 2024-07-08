@@ -75,7 +75,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
     LOGGER.info("Received message: %s", value)
 
     PI.write(SOLENOID, level=True)
-    sleep(0.2)
+    sleep(1)
     PI.write(SOLENOID, level=False)
 
 
@@ -129,7 +129,7 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
 
     if level == NewPinState.ON:
         # Safety feature to prevent the solenoid from being on for too long
-        sleep(1)
+        sleep(5)
         PI.write(SOLENOID, level=False)
 
 
