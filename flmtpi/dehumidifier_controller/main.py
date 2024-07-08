@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from logging import WARNING, getLogger
+from logging import getLogger
 from os import environ
-from typing import Any, Final
+from time import sleep
+from typing import TYPE_CHECKING, Any, Final
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
@@ -13,13 +14,16 @@ from pigpio import EITHER_EDGE  # type: ignore[import-untyped]
 from pigpio import pi as rasp_pi
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff
-from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
+from wg_utilities.loggers import add_stream_handler
+
+if TYPE_CHECKING:
+    from paho.mqtt.properties import Properties
+    from paho.mqtt.reasoncodes import ReasonCode
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
 
 add_stream_handler(LOGGER)
-add_warehouse_handler(LOGGER, level=WARNING)
 
 MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
@@ -28,11 +32,11 @@ MQTT_HOST: Final[str] = environ["MQTT_HOST"]
 
 PI = rasp_pi()
 
-FAN_PIN: Final[int] = int(environ["FAN_PIN"])
-FAN_MQTT_TOPIC = environ["FAN_MQTT_TOPIC"]
+SOLENOID: Final[int] = 26
+MQTT_TOPIC = environ["DEHUMIDIFIER_CONTROLLER_MQTT_TOPIC"]
 
-ON_VALUES = (True, 1, "1", "on", "true", "True")
-OFF_VALUES = (False, 0, "0", "off", "false", "False")
+ON_VALUES = (True, 1, "1", "on", "true")
+OFF_VALUES = (False, 0, "0", "off", "false")
 
 
 class NewPinState(IntEnum):
@@ -49,9 +53,9 @@ def publish_state(state: bool | NewPinState) -> None:
     if state == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
 
-    MQTT.publish(FAN_MQTT_TOPIC, bool(state))
+    MQTT.publish(MQTT_TOPIC, bool(state))
 
-    LOGGER.info("Published state '%s' to topic '%s'", state, FAN_MQTT_TOPIC)
+    LOGGER.info("Published state '%s' to topic '%s'", state, MQTT_TOPIC)
 
 
 @MQTT.message_callback()
@@ -62,7 +66,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
         message (MQTTMessage): the message object from the MQTT subscription
     """
 
-    if (value := message.payload.decode()) not in ON_VALUES + OFF_VALUES:
+    if (value := message.payload.decode().casefold()) not in ON_VALUES + OFF_VALUES:
         raise ValueError(
             f"Invalid value received ({value}). Must be one of: "
             f"{ON_VALUES + OFF_VALUES}"
@@ -70,19 +74,21 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
     LOGGER.info("Received message: %s", value)
 
-    pin_value = value in ON_VALUES
-
-    LOGGER.debug("Setting pin to %s", pin_value)
-
-    PI.write(FAN_PIN, pin_value)
+    PI.write(SOLENOID, level=True)
+    sleep(1)
+    PI.write(SOLENOID, level=False)
 
 
 @MQTT.connect_callback()
 def on_connect(
-    client: mqtt.Client, userdata: dict[str, Any], flags: Any, rc: int
+    client: mqtt.Client,
+    userdata: Any,
+    flags: mqtt.ConnectFlags,
+    rc: ReasonCode,
+    properties: Properties | None,
 ) -> None:
     """Callback for when the MQTT client connects."""
-    _ = client, userdata, flags
+    _ = client, userdata, flags, properties
 
     if rc == 0:
         LOGGER.info("Connected to MQTT broker")
@@ -91,12 +97,18 @@ def on_connect(
 
 
 @MQTT.disconnect_callback()
-def on_disconnect(client: mqtt.Client, userdata: dict[str, Any], rc: int) -> None:
+def on_disconnect(
+    client: mqtt.Client,
+    userdata: Any,
+    flags: mqtt.DisconnectFlags,
+    rc: ReasonCode,
+    properties: Properties | None,
+) -> None:
     """Callback for when the MQTT client disconnects."""
-    _ = client, userdata
+    _ = client, userdata, flags, properties
 
     if rc != 0:
-        LOGGER.error("Unexpected disconnection from MQTT broker: %s", rc)
+        LOGGER.error("Unexpected disconnection from MQTT broker: %r", rc)
         backoff_reconnect()
 
 
@@ -115,7 +127,10 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
 
     LOGGER.debug("Pin %s changed state to %s", gpio, level)
 
-    publish_state(level)
+    if level == NewPinState.ON:
+        # Safety feature to prevent the solenoid from being on for too long
+        sleep(5)
+        PI.write(SOLENOID, level=False)
 
 
 @process_exception(logger=LOGGER)
@@ -123,11 +138,11 @@ def main() -> None:
     """Main function."""
     MQTT.connect(MQTT_HOST)
 
-    MQTT.subscribe(FAN_MQTT_TOPIC)
+    MQTT.subscribe(MQTT_TOPIC)
 
-    PI.callback(FAN_PIN, EITHER_EDGE, pin_callback)
+    PI.callback(SOLENOID, EITHER_EDGE, pin_callback)
 
-    publish_state(PI.read(FAN_PIN))
+    PI.write(SOLENOID, level=False)
 
     MQTT.loop_forever()
 
