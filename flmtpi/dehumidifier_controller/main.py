@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import IntEnum
 from logging import getLogger
 from os import environ
+from time import sleep
 from typing import TYPE_CHECKING, Any, Final
 
 import paho.mqtt.client as mqtt
@@ -31,7 +32,7 @@ MQTT_HOST: Final[str] = environ["MQTT_HOST"]
 
 PI = rasp_pi()
 
-FAN_PIN: Final[int] = 26
+SOLENOID: Final[int] = 26
 MQTT_TOPIC = environ["DEHUMIDIFIER_CONTROLLER_MQTT_TOPIC"]
 
 ON_VALUES = (True, 1, "1", "on", "true")
@@ -73,11 +74,10 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
     LOGGER.info("Received message: %s", value)
 
-    pin_value = value in ON_VALUES
-
-    LOGGER.debug("Setting pin to %s", pin_value)
-
-    PI.write(FAN_PIN, pin_value)
+    if value in ON_VALUES + OFF_VALUES:
+        PI.write(SOLENOID, level=True)
+        sleep(0.2)
+        PI.write(SOLENOID, level=False)
 
 
 @MQTT.connect_callback()
@@ -138,9 +138,9 @@ def main() -> None:
 
     MQTT.subscribe(MQTT_TOPIC)
 
-    PI.callback(FAN_PIN, EITHER_EDGE, pin_callback)
+    PI.callback(SOLENOID, EITHER_EDGE, pin_callback)
 
-    publish_state(PI.read(FAN_PIN))
+    PI.write(SOLENOID, level=False)
 
     MQTT.loop_forever()
 
