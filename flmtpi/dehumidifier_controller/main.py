@@ -39,6 +39,7 @@ ON_VALUES = (True, 1, "1", "on", "true")
 OFF_VALUES = (False, 0, "0", "off", "false")
 
 CURRENT_STATE: bool = False
+"""The state of the dehumidifier - not the solenoid pin!"""
 
 
 class NewPinState(IntEnum):
