@@ -19,10 +19,9 @@ repos:
           - --strict
           - --show-error-codes
         additional_dependencies:
-          # - dot3k
           - paho-mqtt==2.1.0
           - pigpio==1.78
-          # - rpi.gpio
+          - types-RPi.GPIO
           - types-psutil>=6.0.0
           - types-requests
           - wg-utilities==5.15.3

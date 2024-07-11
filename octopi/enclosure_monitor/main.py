@@ -35,7 +35,6 @@ DHT22 = DHT22Sensor(PI, DHT22_PIN)
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Take temp/humidity readings and upload them to HA."""
-
     while True:
         DHT22.trigger()
         sleep(1)
@@ -43,7 +42,9 @@ def main() -> None:
         temp = round(DHT22.temperature, 2)
         rhum = round(DHT22.humidity, 2)
 
-        if temp == DHT22.DEFAULT_TEMP_VALUE or rhum == DHT22.DEFAULT_RHUM_VALUE:
+        if temp == float(DHT22.DEFAULT_TEMP_VALUE) or rhum == float(
+            DHT22.DEFAULT_RHUM_VALUE,
+        ):
             LOGGER.warning("Bad reading from DHT22")
             sleep(LOOP_DELAY_SECONDS)
             continue
@@ -52,7 +53,7 @@ def main() -> None:
             {
                 "temperature": temp,
                 "humidity": rhum,
-            }
+            },
         )
 
         single(

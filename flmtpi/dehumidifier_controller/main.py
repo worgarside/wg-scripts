@@ -73,7 +73,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
     if (value := message.payload.decode().casefold()) not in ON_VALUES + OFF_VALUES:
         raise ValueError(
             f"Invalid value received ({value}). Must be one of: "
-            f"{ON_VALUES + OFF_VALUES}"
+            f"{ON_VALUES + OFF_VALUES}",
         )
 
     LOGGER.info("Received message: %s", value)
