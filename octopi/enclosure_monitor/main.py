@@ -8,7 +8,6 @@ from os import environ
 from time import sleep
 from typing import Final, Literal
 
-from dotenv import load_dotenv
 from paho.mqtt.publish import single
 from pigpio import pi as rasp_pi  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
@@ -19,8 +18,6 @@ LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
 
 add_warehouse_handler(LOGGER, level=WARNING)
-
-load_dotenv()
 
 PI = rasp_pi()
 

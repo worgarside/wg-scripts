@@ -12,7 +12,6 @@ from time import sleep, time
 from typing import TYPE_CHECKING, Any, Final, TypedDict
 
 import paho.mqtt.client as mqtt
-from dotenv import load_dotenv
 from paho.mqtt.enums import CallbackAPIVersion
 from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
@@ -28,8 +27,6 @@ LOGGER.setLevel("INFO")
 
 add_stream_handler(LOGGER)
 add_warehouse_handler(LOGGER, level=WARNING)
-
-load_dotenv()
 
 MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
