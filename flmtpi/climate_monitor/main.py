@@ -27,7 +27,7 @@ add_warehouse_handler(LOGGER, level=WARNING)
 
 try:
     from dot3k import lcd as dot3k_lcd  # type: ignore[import-not-found]
-    from RPi import GPIO  # type: ignore[import-not-found]
+    from RPi import GPIO
 except ImportError:
     if platform.system() != "Darwin":
         raise
@@ -71,7 +71,8 @@ except ImportError:
         """Dummy class for lcd import on non-Pi machine."""
 
         def ChangeDutyCycle(  # noqa: N802
-            self, value: float
+            self,
+            value: float,
         ) -> None:
             """Dummy function."""
 
@@ -101,7 +102,8 @@ except ImportError:
 
         @staticmethod
         def PWM(  # noqa: N802
-            pin: int, mode: int
+            pin: int,
+            mode: int,
         ) -> GpioPin:
             """Dummy function."""
             _ = pin, mode
@@ -139,7 +141,11 @@ class DisplayOTron:
 
     @process_exception(logger=LOGGER)
     def write_line(
-        self, line_num: int, content: str, *, force_truncate: bool = True
+        self,
+        line_num: int,
+        content: str,
+        *,
+        force_truncate: bool = True,
     ) -> None:
         """Write a message to a specific line.
 
@@ -153,10 +159,9 @@ class DisplayOTron:
             ValueError: if the line number is invalid
             ValueError: if the content is too long
         """
-
         if line_num not in (0, 1, 2):
             raise ValueError(
-                f"Unexpected line number ({line_num}), expected in range 0-2"
+                f"Unexpected line number ({line_num}), expected in range 0-2",
             )
 
         if len(content) > self.MAX_LINE_LENGTH:
@@ -165,7 +170,7 @@ class DisplayOTron:
             else:
                 raise ValueError(
                     f"Content is too long ({len(content)} chars), "
-                    f"should be <= {self.MAX_LINE_LENGTH}"
+                    f"should be <= {self.MAX_LINE_LENGTH}",
                 )
 
         self.LCD.set_cursor_position(0, line_num)
@@ -183,14 +188,13 @@ class DisplayOTron:
         Raises:
             ValueError: if the number of lines to write != 3
         """
-
         if len(lines) != self.LINE_COUNT:
             raise ValueError(
-                f"Unexpected number of lines to write ({len(lines)}, expected length 3"
+                f"Unexpected number of lines to write ({len(lines)}, expected length 3",
             )
 
         for i, line in enumerate(lines):
-            if line is None and wipe_null is False:
+            if not line and wipe_null is False:
                 continue
 
             self.write_line(line_num=i, content=line or "")
@@ -255,10 +259,10 @@ def main() -> None:
             dht22.trigger()
             screen.write_lines(
                 [
-                    datetime.now().strftime("%a, %-d %b %Y"),
+                    datetime.now().strftime("%a, %-d %b %Y"),  # noqa: DTZ005
                     TEMP_LINE.format(dht22.temperature),
                     HUMID_LINE.format(dht22.humidity),
-                ]
+                ],
             )
             single(
                 "/homeassistant/flmtpi/dht22",
@@ -266,7 +270,7 @@ def main() -> None:
                     {
                         "temperature": round(dht22.temperature, 2),
                         "humidity": round(dht22.humidity, 2),
-                    }
+                    },
                 ),
                 **MQTT_AUTH_KWARGS,  # type: ignore[arg-type]
             )

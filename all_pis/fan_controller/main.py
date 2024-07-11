@@ -61,11 +61,10 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
     Args:
         message (MQTTMessage): the message object from the MQTT subscription
     """
-
     if (value := message.payload.decode()) not in ON_VALUES + OFF_VALUES:
         raise ValueError(
             f"Invalid value received ({value}). Must be one of: "
-            f"{ON_VALUES + OFF_VALUES}"
+            f"{ON_VALUES + OFF_VALUES}",
         )
 
     LOGGER.info("Received message: %s", value)
@@ -79,7 +78,10 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
 @MQTT.connect_callback()
 def on_connect(
-    client: mqtt.Client, userdata: dict[str, Any], flags: Any, rc: int
+    client: mqtt.Client,
+    userdata: dict[str, Any],
+    flags: Any,
+    rc: int,
 ) -> None:
     """Callback for when the MQTT client connects."""
     _ = client, userdata, flags

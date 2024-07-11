@@ -43,11 +43,10 @@ def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
     Args:
         message (MQTTMessage): the message object from the MQTT subscription
     """
-
     if (value := message.payload.decode()) not in ON_VALUES + OFF_VALUES:
         raise ValueError(
             f"Invalid value received ({value}). Must be one of: "
-            f"{ON_VALUES + OFF_VALUES}"
+            f"{ON_VALUES + OFF_VALUES}",
         )
 
     pin_value = value in ON_VALUES

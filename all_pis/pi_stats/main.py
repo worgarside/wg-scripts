@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import socket
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import lru_cache
 from json import dumps
 from logging import WARNING, getLogger
@@ -94,7 +94,10 @@ class RaspberryPi:
     ACTIVE_GIT_REF: Final[str] = local_git_ref()
 
     BOOT_TIME: Final[float] = boot_time()
-    BOOT_TIME_ISOFORMAT: Final[str] = datetime.fromtimestamp(BOOT_TIME).isoformat()
+    BOOT_TIME_ISOFORMAT: Final[str] = datetime.fromtimestamp(
+        BOOT_TIME,
+        tz=UTC,
+    ).isoformat()
 
     STATS_TOPIC: Final[str] = f"/homeassistant/{HOSTNAME}/stats"
 
@@ -104,7 +107,6 @@ class RaspberryPi:
         Returns:
             Stats: the current stats for the Pi.
         """
-
         # Doing this first and separately so the other properties don't affect the
         # readings
         load_1m, load_5m, load_15m = self.load_averages
@@ -232,7 +234,6 @@ def backoff_reconnect() -> None:
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Sends system stats to Home Assistant every minute."""
-
     rasp_pi = RaspberryPi()
 
     MQTT.connect(MQTT_HOST)
