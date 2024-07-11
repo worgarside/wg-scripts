@@ -36,7 +36,9 @@ MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_P
 
 MQTT_HOST: Final[str] = environ["MQTT_HOST"]
 
-ONE_MINUTE: Final[int] = 60
+HOSTNAME: Final = socket.gethostname()
+IP_FALLBACK: Final = f"{HOSTNAME}.local"
+ONE_MINUTE: Final = 60
 
 
 class Stats(TypedDict):
@@ -53,7 +55,7 @@ class Stats(TypedDict):
     boot_time: str
     local_git_ref: str
     active_git_ref: str
-    local_ip: str | None
+    local_ip: str
 
 
 @lru_cache(maxsize=1)
@@ -68,7 +70,7 @@ def local_git_ref() -> str:
 
 
 @lru_cache(maxsize=1)
-def local_ip() -> str | None:
+def local_ip() -> str:
     """Get the local IP address of the Pi.
 
     https://stackoverflow.com/a/28950776/7689800
@@ -76,16 +78,15 @@ def local_ip() -> str | None:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(0)
 
+    ip = IP_FALLBACK
+
     try:
         s.connect(("10.254.254.254", 1))
         ip = s.getsockname()[0]
     except Exception:
-        ip = None
+        LOGGER.exception("Failed to get local IP address")
     finally:
         s.close()
-
-    if not ip:
-        return None
 
     return str(ip)
 
@@ -97,7 +98,6 @@ class RaspberryPi:
 
     BOOT_TIME: Final[float] = boot_time()
     BOOT_TIME_ISOFORMAT: Final[str] = datetime.fromtimestamp(BOOT_TIME).isoformat()
-    HOSTNAME: Final[str] = socket.gethostname()
 
     STATS_TOPIC: Final[str] = f"/homeassistant/{HOSTNAME}/stats"
 
@@ -118,6 +118,8 @@ class RaspberryPi:
 
         if uptime % 300 < ONE_MINUTE:
             local_git_ref.cache_clear()
+            local_ip.cache_clear()
+        elif not local_ip():
             local_ip.cache_clear()
 
         return Stats(
@@ -252,7 +254,7 @@ def main() -> None:
                 payload=dumps(rasp_pi.get_stats()),
             )
         except TimeoutError:
-            LOGGER.exception("%s timed out sending stats", rasp_pi.HOSTNAME)
+            LOGGER.exception("%s timed out sending stats", HOSTNAME)
 
         sleep(ONE_MINUTE)
 
