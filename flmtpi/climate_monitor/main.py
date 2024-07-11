@@ -11,7 +11,6 @@ from os import getenv
 from time import sleep
 from typing import TYPE_CHECKING, Any, Final
 
-from dotenv import load_dotenv
 from paho.mqtt.publish import single
 from pigpio import pi  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
@@ -107,9 +106,6 @@ except ImportError:
             """Dummy function."""
             _ = pin, mode
             return GpioPin()
-
-
-load_dotenv()
 
 
 LOOP_DELAY_SECONDS = 30
