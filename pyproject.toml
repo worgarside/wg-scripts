@@ -8,7 +8,6 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-python-dotenv = "^1.0.1"
 wg-utilities = { extras = [
   "devices.dht22",
   "exceptions",

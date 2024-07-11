@@ -22,7 +22,6 @@ repos:
           # - dot3k
           - paho-mqtt==2.1.0
           - pigpio==1.78
-          - python-dotenv==1.0.1
           # - rpi.gpio
           - types-psutil>=6.0.0
           - types-requests
