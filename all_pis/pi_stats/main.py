@@ -118,7 +118,7 @@ class RaspberryPi:
         if uptime % 300 < ONE_MINUTE:
             local_git_ref.cache_clear()
             local_ip.cache_clear()
-        elif not local_ip():
+        elif local_ip() == IP_FALLBACK:
             local_ip.cache_clear()
 
         return Stats(
