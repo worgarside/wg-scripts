@@ -2,44 +2,59 @@
 
 from __future__ import annotations
 
+import re
 from enum import IntEnum
-from logging import getLogger
-from os import environ
-from time import sleep
+from json import loads
+from logging import WARNING
+from os import environ, getenv
+from pathlib import Path
+from socket import gethostname
 from typing import TYPE_CHECKING, Any, Final
 
 import paho.mqtt.client as mqtt
+import pigpio  # type: ignore[import-untyped]
 from paho.mqtt.enums import CallbackAPIVersion
-from pigpio import EITHER_EDGE  # type: ignore[import-untyped]
-from pigpio import pi as rasp_pi
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff
-from wg_utilities.loggers import add_stream_handler
+from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
 
 if TYPE_CHECKING:
     from paho.mqtt.properties import Properties
     from paho.mqtt.reasoncodes import ReasonCode
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel("INFO")
+LOGGER = get_streaming_logger(__name__)
 
-add_stream_handler(LOGGER)
+add_warehouse_handler(LOGGER, level=WARNING)
 
-MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
-MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
+# =============================================================================
+# Constants
 
+ON_VALUES: Final = (True, 1, "1", "on", "true", "True")
+OFF_VALUES: Final = (False, 0, "0", "off", "false", "False")
+
+KEBAB_PATTERN = re.compile(r"^(?:[a-z0-9]+-?)+[a-z0-9]+$")
+"""Pattern for `kebab-case` strings."""
+
+MAPPING_FILE: Final = Path(__file__).parent / "gpio_mapping.json"
+
+MAPPING: dict[str, int] = loads(MAPPING_FILE.read_text())
+"""Mapping of topic suffixes to GPIO pins.
+
+e.g. {"cpu-fan": 17}
+"""
+
+PI: Final = pigpio.pi()
+
+# =============================================================================
+# Environment Variables
+
+HOSTNAME = getenv("HOSTNAME", gethostname())
+MQTT_USERNAME = getenv("MQTT_USERNAME", HOSTNAME)
+MQTT_PASSWORD = environ["MQTT_PASSWORD"]
 MQTT_HOST: Final[str] = environ["MQTT_HOST"]
 
-PI = rasp_pi()
-
-SOLENOID: Final[int] = 26
-MQTT_TOPIC = environ["DEHUMIDIFIER_CONTROLLER_MQTT_TOPIC"]
-
-ON_VALUES = (True, 1, "1", "on", "true")
-OFF_VALUES = (False, 0, "0", "off", "false")
-
-CURRENT_STATE: bool = False
-"""The state of the dehumidifier - not the solenoid pin!"""
+MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
+MQTT.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
 
 
 class NewPinState(IntEnum):
@@ -50,15 +65,31 @@ class NewPinState(IntEnum):
     WATCHDOG_TIMEOUT_NO_CHANGE = 2
 
 
+def get_topic(pin: int) -> str:
+    """Get the topic for a given pin."""
+    if not (suffix := next((k for k, v in MAPPING.items() if v == pin), None)):
+        raise ValueError(f"Pin {pin} not found in mapping")
+
+    if not KEBAB_PATTERN.fullmatch(suffix):
+        raise ValueError(f"Invalid suffix: {suffix}")
+
+    return f"/homeassistant/{HOSTNAME}/gpio/{suffix}"
+
+
+def get_pin(topic: str) -> int:
+    """Get the pin for a given topic."""
+    return MAPPING[topic.split("/")[-1]]
+
+
 @process_exception(logger=LOGGER)
-def publish_state(state: bool | NewPinState) -> None:
+def publish_state(state: bool | NewPinState, topic: str) -> None:
     """Publish the state of the pin to an MQTT topic."""
     if state == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
 
-    MQTT.publish(MQTT_TOPIC, bool(state))
+    MQTT.publish(topic, bool(state))
 
-    LOGGER.info("Published state '%s' to topic '%s'", state, MQTT_TOPIC)
+    LOGGER.info("Published state '%s' to topic '%s'", state, topic)
 
 
 @MQTT.message_callback()
@@ -68,9 +99,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
     Args:
         message (MQTTMessage): the message object from the MQTT subscription
     """
-    global CURRENT_STATE  # noqa: PLW0603
-
-    if (value := message.payload.decode().casefold()) not in ON_VALUES + OFF_VALUES:
+    if (value := message.payload.decode()) not in ON_VALUES + OFF_VALUES:
         raise ValueError(
             f"Invalid value received ({value}). Must be one of: "
             f"{ON_VALUES + OFF_VALUES}",
@@ -78,11 +107,11 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
     LOGGER.info("Received message: %s", value)
 
-    if value in (OFF_VALUES if CURRENT_STATE else ON_VALUES):
-        PI.write(SOLENOID, level=True)
-        CURRENT_STATE = not CURRENT_STATE
-        sleep(1)
-        PI.write(SOLENOID, level=False)
+    pin_value = value in ON_VALUES
+
+    LOGGER.debug("Setting pin to %s", pin_value)
+
+    PI.write(get_pin(message.topic), pin_value)
 
 
 @MQTT.connect_callback()
@@ -126,17 +155,16 @@ def backoff_reconnect() -> None:
 
 def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
     """Callback for when the pin changes state."""
-    _ = gpio, tick
+    _ = tick
 
     if level == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
 
     LOGGER.debug("Pin %s changed state to %s", gpio, level)
 
-    if level == NewPinState.ON:
-        # Safety feature to prevent the solenoid from being on for too long
-        sleep(5)
-        PI.write(SOLENOID, level=False)
+    topic = get_topic(gpio)
+
+    publish_state(level, topic)
 
 
 @process_exception(logger=LOGGER)
@@ -144,11 +172,16 @@ def main() -> None:
     """Main function."""
     MQTT.connect(MQTT_HOST)
 
-    MQTT.subscribe(MQTT_TOPIC)
+    topic_suffix_pin_mapping: dict[str, int] = loads(MAPPING_FILE.read_text())
 
-    PI.callback(SOLENOID, EITHER_EDGE, pin_callback)
+    for suffix, pin in topic_suffix_pin_mapping.items():
+        topic = f"/homeassistant/{HOSTNAME}/gpio/{suffix}"
 
-    PI.write(SOLENOID, level=False)
+        MQTT.subscribe(topic)
+
+        PI.callback(pin, pigpio.EITHER_EDGE, pin_callback)
+
+        publish_state(PI.read(pin))
 
     MQTT.loop_forever()
 

@@ -6,8 +6,8 @@ import socket
 from datetime import UTC, datetime
 from functools import lru_cache
 from json import dumps
-from logging import WARNING, getLogger
-from os import environ, getloadavg
+from logging import WARNING
+from os import environ, getenv, getloadavg
 from time import sleep, time
 from typing import TYPE_CHECKING, Any, Final, TypedDict
 
@@ -16,26 +16,33 @@ from paho.mqtt.enums import CallbackAPIVersion
 from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import backoff, run_cmd
-from wg_utilities.loggers import add_stream_handler, add_warehouse_handler
+from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
 
 if TYPE_CHECKING:
     from paho.mqtt.properties import Properties
     from paho.mqtt.reasoncodes import ReasonCode
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel("INFO")
+LOGGER = get_streaming_logger(__name__)
 
-add_stream_handler(LOGGER)
 add_warehouse_handler(LOGGER, level=WARNING)
 
-MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
-MQTT.username_pw_set(username=environ["MQTT_USERNAME"], password=environ["MQTT_PASSWORD"])
 
+# =============================================================================
+# Environment Variables
+
+HOSTNAME = getenv("HOSTNAME", socket.gethostname())
+MQTT_USERNAME = getenv("MQTT_USERNAME", HOSTNAME)
+MQTT_PASSWORD = environ["MQTT_PASSWORD"]
 MQTT_HOST: Final[str] = environ["MQTT_HOST"]
 
-HOSTNAME: Final = socket.gethostname()
+# =============================================================================
+# Constants
+
 IP_FALLBACK: Final = f"{HOSTNAME}.local"
 ONE_MINUTE: Final = 60
+
+MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
+MQTT.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
 
 
 class Stats(TypedDict):
@@ -247,10 +254,7 @@ def main() -> None:
             backoff_reconnect()
 
         try:
-            MQTT.publish(
-                rasp_pi.STATS_TOPIC,
-                payload=dumps(rasp_pi.get_stats()),
-            )
+            MQTT.publish(rasp_pi.STATS_TOPIC, payload=dumps(rasp_pi.get_stats()))
         except TimeoutError:
             LOGGER.exception("%s timed out sending stats", HOSTNAME)
 

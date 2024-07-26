@@ -1,5 +1,5 @@
 [Unit]
-Description=Enclosure Fan Controller Service
+Description=DHT22 MQTT Sensor Service
 After=multi-user.target
 StartLimitBurst=10
 StartLimitIntervalSec=10
@@ -10,7 +10,7 @@ Restart=always
 RestartSec=5
 User=pi
 EnvironmentFile=/home/pi/wg-scripts/.env
-ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/octopi/enclosure_fan_controller/main.py
+ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/dht22_mqtt_sensor/main.py
 WorkingDirectory=/home/pi/wg-scripts
 
 [Install]

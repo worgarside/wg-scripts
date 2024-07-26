@@ -1,5 +1,5 @@
 [Unit]
-Description=Enclosure Monitor Service
+Description=MQTT GPIO Service
 After=multi-user.target
 StartLimitBurst=10
 StartLimitIntervalSec=10
@@ -10,7 +10,7 @@ Restart=always
 RestartSec=5
 User=pi
 EnvironmentFile=/home/pi/wg-scripts/.env
-ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/all_pis/fan_controller/main.py
+ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/all_pis/mqtt_gpio/main.py
 WorkingDirectory=/home/pi/wg-scripts
 
 [Install]
