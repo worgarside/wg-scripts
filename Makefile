@@ -18,9 +18,11 @@ update:
 
 # Service Commands
 
+import .env
+export
 
 run-%:
-	@export $(shell cat .env | xargs) && .venv/bin/python $*/main.py
+	.venv/bin/python $*/main.py
 
 disable-%:
 	sudo systemctl disable $*.service
