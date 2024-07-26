@@ -87,7 +87,7 @@ def publish_state(state: bool | NewPinState, topic: str) -> None:
     if state == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
 
-    MQTT.publish(topic, bool(state))
+    MQTT.publish(topic, bool(state), retain=True)
 
     LOGGER.info("Published state '%s' to topic '%s'", state, topic)
 
@@ -105,7 +105,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
             f"{ON_VALUES + OFF_VALUES}",
         )
 
-    LOGGER.info("Received message: %s", value)
+    LOGGER.info("Received message %r on topic %s", value, message.topic)
 
     target_state = value in ON_VALUES
 
