@@ -162,9 +162,7 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
 
     LOGGER.debug("Pin %s changed state to %s", gpio, level)
 
-    topic = get_topic(gpio)
-
-    publish_state(level, topic)
+    publish_state(level, get_topic(gpio))
 
 
 @process_exception(logger=LOGGER)
@@ -181,7 +179,7 @@ def main() -> None:
 
         PI.callback(pin, pigpio.EITHER_EDGE, pin_callback)
 
-        publish_state(PI.read(pin))
+        publish_state(PI.read(pin), topic)
 
     MQTT.loop_forever()
 
