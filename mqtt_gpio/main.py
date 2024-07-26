@@ -184,8 +184,6 @@ def main() -> None:
 
         PI.callback(pin, pigpio.EITHER_EDGE, pin_callback)
 
-        publish_state(PI.read(pin), topic)
-
     MQTT.loop_forever()
 
 
