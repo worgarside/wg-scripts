@@ -16,11 +16,11 @@ update:
 	git pull --prune
 	@$(MAKE) install-python
 
-
 # Service Commands
 
+
 run-%:
-	.venv/bin/python $*/main.py
+	@export $(shell cat .env | xargs) && .venv/bin/python $*/main.py
 
 disable-%:
 	sudo systemctl disable $*.service
