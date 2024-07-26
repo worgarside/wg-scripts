@@ -105,7 +105,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
             f"{ON_VALUES + OFF_VALUES}",
         )
 
-    LOGGER.info("Received message %r on topic %s", value, message.topic)
+    LOGGER.info("Received message %r on topic %r", value, message.topic)
 
     target_state = value in ON_VALUES
 
