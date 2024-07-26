@@ -19,9 +19,6 @@ pigpio = "*"
 dot3k = { version = "*", platform = "linux" }
 rpi-gpio = { version = "*", platform = "linux" }
 
-[tool.poetry.group.dev.dependencies]
-pre-commit = "^3.7.1"
-
 # Tool Configs
 
 [tool.mypy]

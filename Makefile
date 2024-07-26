@@ -19,6 +19,9 @@ update:
 
 # Service Commands
 
+run-%:
+	.venv/bin/python $*/main.py
+
 disable-%:
 	sudo systemctl disable $*.service
 
