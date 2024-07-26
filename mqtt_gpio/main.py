@@ -87,9 +87,9 @@ def publish_state(state: bool | NewPinState, topic: str) -> None:
     if state == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
 
-    MQTT.publish(topic, bool(state), retain=True)
+    MQTT.publish(topic, bool(state), retain=True, qos=2)
 
-    LOGGER.info("Published state '%s' to topic '%s'", state, topic)
+    LOGGER.info("Published state %r to topic %r", bool(state), topic)
 
 
 @MQTT.message_callback()
@@ -114,7 +114,7 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
     if bool(PI.read(gpio)) == target_state:
         return
 
-    LOGGER.debug("Setting pin to %s", target_state)
+    LOGGER.debug("Setting pin %i to %s", gpio, target_state)
 
     PI.write(gpio, target_state)
 
