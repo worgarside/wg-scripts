@@ -18,7 +18,7 @@ update:
 
 # Service Commands
 
-import .env
+include .env
 export
 
 run-%:
