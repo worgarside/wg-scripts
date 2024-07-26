@@ -107,11 +107,16 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
     LOGGER.info("Received message: %s", value)
 
-    pin_value = value in ON_VALUES
+    target_state = value in ON_VALUES
 
-    LOGGER.debug("Setting pin to %s", pin_value)
+    gpio = get_pin(message.topic)
 
-    PI.write(get_pin(message.topic), pin_value)
+    if bool(PI.read(gpio)) == target_state:
+        return
+
+    LOGGER.debug("Setting pin to %s", target_state)
+
+    PI.write(gpio, target_state)
 
 
 @MQTT.connect_callback()
