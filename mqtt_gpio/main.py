@@ -222,13 +222,6 @@ def main() -> None:
 
         PI.callback(pin, pigpio.EITHER_EDGE, pin_callback)
 
-        # Publish state manually once to sync with HA
-        state = bool(PI.read(pin))
-
-        MQTT.publish(topic, payload=state, retain=True, qos=2)
-
-        LOGGER.debug("Published initial state of pin %i: %r", pin, state)
-
     MQTT.loop_forever()
 
 
