@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from json import dumps
-from logging import WARNING, getLogger
+from logging import WARNING
 from os import environ
 from time import sleep
 from typing import Final
@@ -11,25 +11,15 @@ from typing import Final
 import pigpio  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
-from wg_utilities.loggers import add_warehouse_handler
+from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
 from wg_utilities.utils import mqtt
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel("INFO")
-
+LOGGER = get_streaming_logger(__name__)
 add_warehouse_handler(LOGGER, level=WARNING)
-
-# =============================================================================
-# Constants
 
 LOOP_DELAY_SECONDS: Final = 30
 
-# =============================================================================
-# Environment Variables
-
 DHT22_PIN: Final[int] = int(environ["DHT22_PIN"])
-
-MQTT_TOPIC: Final = f"/homeassistant/{mqtt.HOSTNAME}/dht22"
 
 
 @process_exception(logger=LOGGER)
@@ -55,7 +45,7 @@ def main() -> None:
             continue
 
         mqtt.CLIENT.publish(
-            MQTT_TOPIC,
+            f"/homeassistant/{mqtt.HOSTNAME}/dht22",
             payload=dumps(
                 {
                     "temperature": temp,

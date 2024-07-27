@@ -6,22 +6,20 @@ import platform
 from colorsys import hsv_to_rgb
 from datetime import datetime
 from json import dumps
-from logging import WARNING, getLogger
+from logging import WARNING
 from time import sleep
 from typing import TYPE_CHECKING, Any, Final
 
 from pigpio import pi  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
-from wg_utilities.loggers import add_warehouse_handler
+from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
 from wg_utilities.utils import mqtt
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-LOGGER = getLogger(__name__)
-LOGGER.setLevel("INFO")
-
+LOGGER = get_streaming_logger(__name__)
 add_warehouse_handler(LOGGER, level=WARNING)
 
 try:

@@ -18,7 +18,6 @@ from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
 from wg_utilities.utils import mqtt
 
 LOGGER = get_streaming_logger(__name__)
-
 add_warehouse_handler(LOGGER, level=WARNING)
 
 # =============================================================================

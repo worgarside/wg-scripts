@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from paho.mqtt.client import MQTTMessage
 
 LOGGER = get_streaming_logger(__name__)
-
 add_warehouse_handler(LOGGER, level=WARNING)
 
 # =============================================================================
