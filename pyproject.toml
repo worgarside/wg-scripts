@@ -93,6 +93,7 @@ lint.ignore = [
   "EM",     # https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
   "ANN",    # https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
   "BLE",    # https://docs.astral.sh/ruff/rules/blind-except/
+  "TID252", # https://docs.astral.sh/ruff/rules/relative-imports/
 ]
 
 [tool.ruff.lint.per-file-ignores]

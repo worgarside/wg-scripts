@@ -9,10 +9,10 @@ from time import sleep
 from typing import Final
 
 import pigpio  # type: ignore[import-untyped]
-from utils import const, mqtt
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
+from wg_utilities.utils import mqtt
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
@@ -29,7 +29,7 @@ LOOP_DELAY_SECONDS: Final = 30
 
 DHT22_PIN: Final[int] = int(environ["DHT22_PIN"])
 
-MQTT_TOPIC: Final = f"/homeassistant/{const.HOSTNAME}/dht22"
+MQTT_TOPIC: Final = f"/homeassistant/{mqtt.HOSTNAME}/dht22"
 
 
 @process_exception(logger=LOGGER)
@@ -38,7 +38,7 @@ def main() -> None:
     pi = pigpio.pi()
     dht22 = DHT22Sensor(pi, DHT22_PIN)
 
-    mqtt.CLIENT.connect(const.MQTT_HOST)
+    mqtt.CLIENT.connect(mqtt.MQTT_HOST)
 
     while True:
         dht22.trigger()

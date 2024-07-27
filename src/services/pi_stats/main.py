@@ -12,10 +12,10 @@ from time import sleep, time
 from typing import Final, TypedDict
 
 from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
-from utils import const, mqtt
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import run_cmd
 from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
+from wg_utilities.utils import mqtt
 
 LOGGER = get_streaming_logger(__name__)
 
@@ -24,7 +24,7 @@ add_warehouse_handler(LOGGER, level=WARNING)
 # =============================================================================
 # Constants
 
-IP_FALLBACK: Final = f"{const.HOSTNAME}.local"
+IP_FALLBACK: Final = f"{mqtt.HOSTNAME}.local"
 ONE_MINUTE: Final = 60
 
 
@@ -89,7 +89,7 @@ class RaspberryPi:
         tz=UTC,
     ).isoformat()
 
-    STATS_TOPIC: Final[str] = f"/homeassistant/{const.HOSTNAME}/stats"
+    STATS_TOPIC: Final[str] = f"/homeassistant/{mqtt.HOSTNAME}/stats"
 
     def get_stats(self) -> Stats:
         """Get the current stats for the Pi.
@@ -190,7 +190,7 @@ def main() -> None:
     """Sends system stats to Home Assistant every minute."""
     rasp_pi = RaspberryPi()
 
-    mqtt.CLIENT.connect(const.MQTT_HOST)
+    mqtt.CLIENT.connect(mqtt.MQTT_HOST)
     mqtt.CLIENT.loop_start()
 
     # This is done as a while loop, rather than a cron job, so that instantiating the
@@ -204,7 +204,7 @@ def main() -> None:
                 qos=1,
             )
         except TimeoutError:
-            LOGGER.exception("%s timed out sending stats", const.HOSTNAME)
+            LOGGER.exception("%s timed out sending stats", mqtt.HOSTNAME)
 
         sleep(ONE_MINUTE)
 

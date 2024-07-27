@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from enum import IntEnum
 from functools import lru_cache
@@ -12,9 +13,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
 import pigpio  # type: ignore[import-untyped]
-from utils import const, mqtt
 from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
+from wg_utilities.utils import mqtt
 
 if TYPE_CHECKING:
     from paho.mqtt.client import MQTTMessage
@@ -29,6 +30,8 @@ add_warehouse_handler(LOGGER, level=WARNING)
 ON_VALUES: Final = (True, 1, "1", "on", "true", "True")
 OFF_VALUES: Final = (False, 0, "0", "off", "false", "False")
 
+KEBAB_PATTERN = re.compile(r"^(?:[a-z0-9]+-?)+[a-z0-9]+$")
+"""Pattern for `kebab-case` strings."""
 
 MAPPING_FILE: Final = Path(__file__).parent / "gpio_mapping.json"
 
@@ -70,10 +73,10 @@ def get_topic(pin: int) -> str:
     if not (suffix := next((k for k, v in MAPPING.items() if v == pin), None)):
         raise ValueError(f"Pin {pin} not found in mapping")
 
-    if not const.KEBAB_PATTERN.fullmatch(suffix):
+    if not KEBAB_PATTERN.fullmatch(suffix):
         raise ValueError(f"Invalid suffix: {suffix}")
 
-    return f"/homeassistant/{const.HOSTNAME}/gpio/{suffix}"
+    return f"/homeassistant/{mqtt.HOSTNAME}/gpio/{suffix}"
 
 
 @lru_cache(maxsize=len(MAPPING))
@@ -154,7 +157,7 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Main function."""
-    mqtt.CLIENT.connect(const.MQTT_HOST)
+    mqtt.CLIENT.connect(mqtt.MQTT_HOST)
 
     topic_suffix_pin_mapping: dict[str, int] = loads(MAPPING_FILE.read_text())
 
