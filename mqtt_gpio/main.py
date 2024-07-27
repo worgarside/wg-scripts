@@ -222,6 +222,9 @@ def main() -> None:
 
         PI.callback(pin, pigpio.EITHER_EDGE, pin_callback)
 
+        # Call manually once to sync the state
+        pin_callback(pin, NewPinState(PI.read(pin)), 0)
+
     MQTT.loop_forever()
 
 
