@@ -183,12 +183,12 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
     if level == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
 
+    NEXT_CHANGE[gpio] = time.time() + COOLDOWN
+
     if DISABLE_PIN_CALLBACK.get(gpio):
         LOGGER.debug("Suppressed outgoing MQTT message for pin %i", gpio)
         DISABLE_PIN_CALLBACK[gpio] = False
         return
-
-    NEXT_CHANGE[gpio] = time.time() + COOLDOWN
 
     topic = get_topic(gpio)
     payload = bool(level)
