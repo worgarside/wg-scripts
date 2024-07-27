@@ -9,6 +9,7 @@ Type=simple
 Restart=always
 RestartSec=5
 User=pi
+Environment="PYTHONPATH=${PYTHONPATH}:/home/pi/wg-scripts/src"
 EnvironmentFile=/home/pi/wg-scripts/.env
 ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/src/services/mqtt_gpio/main.py
 WorkingDirectory=/home/pi/wg-scripts
