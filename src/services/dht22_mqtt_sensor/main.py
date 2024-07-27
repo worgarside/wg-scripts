@@ -9,11 +9,10 @@ from time import sleep
 from typing import Final
 
 import pigpio  # type: ignore[import-untyped]
+from utils import const, mqtt
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
-
-from utils import const, mqtt
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")

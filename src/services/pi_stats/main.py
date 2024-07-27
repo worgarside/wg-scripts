@@ -12,11 +12,10 @@ from time import sleep, time
 from typing import Final, TypedDict
 
 from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
+from utils import const, mqtt
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import run_cmd
 from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
-
-from utils import const, mqtt
 
 LOGGER = get_streaming_logger(__name__)
 

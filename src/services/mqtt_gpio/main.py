@@ -12,10 +12,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
 import pigpio  # type: ignore[import-untyped]
+from utils import const, mqtt
 from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
-
-from utils import const, mqtt
 
 if TYPE_CHECKING:
     from paho.mqtt.client import MQTTMessage

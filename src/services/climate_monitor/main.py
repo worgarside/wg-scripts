@@ -11,11 +11,10 @@ from time import sleep
 from typing import TYPE_CHECKING, Any, Final
 
 from pigpio import pi  # type: ignore[import-untyped]
+from utils import const, mqtt
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
-
-from utils import const, mqtt
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

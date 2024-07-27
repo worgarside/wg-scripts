@@ -23,6 +23,7 @@ rpi-gpio = { version = "*", platform = "linux" }
 
 [tool.mypy]
 check_untyped_defs = true
+mypy_path = "src"
 
 disallow_any_generics = true
 disallow_incomplete_defs = true
