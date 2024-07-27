@@ -10,7 +10,7 @@ Restart=always
 RestartSec=5
 User=pi
 EnvironmentFile=/home/pi/wg-scripts/.env
-ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/flmtpi/climate_monitor/main.py
+ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/services/climate_monitor/main.py
 WorkingDirectory=/home/pi/wg-scripts
 
 [Install]

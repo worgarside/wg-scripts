@@ -18,13 +18,13 @@ update:
 
 # Service Commands
 
-SERVICES := $(shell ls -d */ | cut -f1 -d'/')
+SERVICES := $(shell ls -d services/*/ | cut -f2 -d'/')
 
 include .env
 export
 
 run-%:
-	.venv/bin/python $*/main.py
+	.venv/bin/python services/$*/main.py
 
 disable-%:
 	sudo systemctl disable $*.service
@@ -33,7 +33,7 @@ enable-%:
 	sudo systemctl enable $*.service
 
 install-%:
-	cd $*; \
+	cd services/$*; \
 	sudo cp $*.service /etc/systemd/system/; \
 	sudo systemctl daemon-reload
 
