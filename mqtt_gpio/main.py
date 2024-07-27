@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+import time
 from enum import IntEnum
+from functools import lru_cache
 from json import loads
 from logging import WARNING
 from os import environ, getenv
@@ -45,8 +47,15 @@ e.g. {"cpu-fan": 17}
 
 PI: Final = pigpio.pi()
 
+
+NEXT_CHANGE: dict[int, float] = {}
+"""Mapping of GPIO pins to the next epoch time they can be changed."""
+
 # =============================================================================
 # Environment Variables
+
+COOLDOWN: Final = int(getenv("GPIO_COOLDOWN", "5"))
+"""Minimum time between pin changes in seconds."""
 
 HOSTNAME: Final = getenv("HOSTNAME", gethostname())
 MQTT_USERNAME: Final = getenv("MQTT_USERNAME", HOSTNAME)
@@ -65,6 +74,7 @@ class NewPinState(IntEnum):
     WATCHDOG_TIMEOUT_NO_CHANGE = 2
 
 
+@lru_cache(maxsize=len(MAPPING))
 def get_topic(pin: int) -> str:
     """Get the topic for a given pin."""
     if not (suffix := next((k for k, v in MAPPING.items() if v == pin), None)):
@@ -76,6 +86,7 @@ def get_topic(pin: int) -> str:
     return f"/homeassistant/{HOSTNAME}/gpio/{suffix}"
 
 
+@lru_cache(maxsize=len(MAPPING))
 def get_pin(topic: str) -> int:
     """Get the pin for a given topic."""
     return MAPPING[topic.split("/")[-1]]
@@ -96,13 +107,17 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
 
     LOGGER.info("Received message %r on topic %r", value, message.topic)
 
-    target_state = value in ON_VALUES
-
     gpio = get_pin(message.topic)
+    target_state = value in ON_VALUES
 
     if bool(PI.read(gpio)) == target_state:
         LOGGER.warning("Pin %i already in state %s", gpio, target_state)
         return
+
+    # Enforce a cooldown period between pin changes
+    if (time_to_wait := NEXT_CHANGE.get(gpio, 0) - time.time()) > 0:
+        LOGGER.warning("Waiting %.3f seconds before changing pin %i", time_to_wait, gpio)
+        time.sleep(time_to_wait)
 
     LOGGER.info("Setting pin %i to %s", gpio, target_state)
 
@@ -154,6 +169,8 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
 
     if level == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
+
+    NEXT_CHANGE[gpio] = time.time()
 
     topic = get_topic(gpio)
     payload = bool(level)

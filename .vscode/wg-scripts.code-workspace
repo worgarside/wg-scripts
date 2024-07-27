@@ -17,6 +17,7 @@
 			"*.yaml": "home-assistant"
 		},
 		"cSpell.words": [
+			"COOLDOWN",
 			"homeassistant",
 			"pigpio"
 		]

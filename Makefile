@@ -70,7 +70,7 @@ stop-all:
 status-all:
 	@for service in $(SERVICES); do \
 		if sudo systemctl list-unit-files | grep -q "$$service.service"; then \
-			echo "$$service.service: is $$(systemctl is-active $$service.service) and $$(systemctl is-enabled $$service.service)"; \
+			echo "$$service.service is $$(systemctl is-active $$service.service) and $$(systemctl is-enabled $$service.service)"; \
 		else \
 			echo "$$service.service is not installed"; \
 		fi \
