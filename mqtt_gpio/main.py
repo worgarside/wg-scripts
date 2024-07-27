@@ -48,10 +48,10 @@ PI: Final = pigpio.pi()
 # =============================================================================
 # Environment Variables
 
-HOSTNAME = getenv("HOSTNAME", gethostname())
-MQTT_USERNAME = getenv("MQTT_USERNAME", HOSTNAME)
-MQTT_PASSWORD = environ["MQTT_PASSWORD"]
-MQTT_HOST: Final[str] = environ["MQTT_HOST"]
+HOSTNAME: Final = getenv("HOSTNAME", gethostname())
+MQTT_USERNAME: Final = getenv("MQTT_USERNAME", HOSTNAME)
+MQTT_PASSWORD: Final = environ["MQTT_PASSWORD"]
+MQTT_HOST: Final = environ["MQTT_HOST"]
 
 MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 MQTT.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
@@ -81,17 +81,6 @@ def get_pin(topic: str) -> int:
     return MAPPING[topic.split("/")[-1]]
 
 
-@process_exception(logger=LOGGER)
-def publish_state(state: bool | NewPinState, topic: str) -> None:
-    """Publish the state of the pin to an MQTT topic."""
-    if state == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
-        return
-
-    MQTT.publish(topic, bool(state), retain=True, qos=2)
-
-    LOGGER.info("Published state %r to topic %r", bool(state), topic)
-
-
 @MQTT.message_callback()
 def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
     """Process env vars on MQTT message.
@@ -112,9 +101,10 @@ def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
     gpio = get_pin(message.topic)
 
     if bool(PI.read(gpio)) == target_state:
+        LOGGER.warning("Pin %i already in state %s", gpio, target_state)
         return
 
-    LOGGER.debug("Setting pin %i to %s", gpio, target_state)
+    LOGGER.info("Setting pin %i to %s", gpio, target_state)
 
     PI.write(gpio, target_state)
 
@@ -165,9 +155,18 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
     if level == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
 
-    LOGGER.debug("Pin %s changed state to %s", gpio, level)
+    topic = get_topic(gpio)
+    payload = bool(level)
 
-    publish_state(level, get_topic(gpio))
+    LOGGER.info(
+        "GPIO pin %i changed state to %r. Publishing %r to %r.",
+        gpio,
+        level,
+        payload,
+        topic,
+    )
+
+    MQTT.publish(topic, payload, retain=True, qos=2)
 
 
 @process_exception(logger=LOGGER)
