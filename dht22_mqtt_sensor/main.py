@@ -72,6 +72,8 @@ def main() -> None:
                 "username": MQTT_USERNAME,
                 "password": MQTT_PASSWORD,
             },
+            retain=True,
+            qos=1,
         )
 
         sleep(LOOP_DELAY_SECONDS)
