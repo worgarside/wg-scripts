@@ -117,10 +117,13 @@ class RaspberryPi:
         # Doing this first and separately so the other properties don't affect the
         # readings
         load_1m, load_5m, load_15m = self.load_averages
-        cpu_usage = self.cpu_usage
-        memory_usage = self.memory_usage
-        temperature = self.cpu_temp
-        uptime = self.uptime
+
+        cpu_usage, memory_usage, temperature, uptime = (
+            self.cpu_usage,
+            self.memory_usage,
+            self.cpu_temp,
+            self.uptime,
+        )
 
         if uptime % 300 < ONE_MINUTE:
             local_git_ref.cache_clear()
@@ -254,7 +257,12 @@ def main() -> None:
             backoff_reconnect()
 
         try:
-            MQTT.publish(rasp_pi.STATS_TOPIC, payload=dumps(rasp_pi.get_stats()))
+            MQTT.publish(
+                topic=rasp_pi.STATS_TOPIC,
+                payload=dumps(rasp_pi.get_stats()),
+                retain=True,
+                qos=1,
+            )
         except TimeoutError:
             LOGGER.exception("%s timed out sending stats", HOSTNAME)
 
