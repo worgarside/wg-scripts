@@ -51,6 +51,12 @@ PI: Final = pigpio.pi()
 NEXT_CHANGE: dict[int, float] = {}
 """Mapping of GPIO pins to the next epoch time they can be changed."""
 
+DISABLE_PIN_CALLBACK: dict[int, bool] = {}
+"""Mapping of GPIO pins to whether the next outgoing MQTT message should be suppressed.
+
+Used to stop infinite loops of messages when the pin is changed by the script.
+"""
+
 # =============================================================================
 # Environment Variables
 
@@ -92,38 +98,6 @@ def get_pin(topic: str) -> int:
     return MAPPING[topic.split("/")[-1]]
 
 
-@MQTT.message_callback()
-def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
-    """Process env vars on MQTT message.
-
-    Args:
-        message (MQTTMessage): the message object from the MQTT subscription
-    """
-    if (value := message.payload.decode()) not in ON_VALUES + OFF_VALUES:
-        raise ValueError(
-            f"Invalid value received ({value}). Must be one of: "
-            f"{ON_VALUES + OFF_VALUES}",
-        )
-
-    LOGGER.info("Received message %r on topic %r", value, message.topic)
-
-    gpio = get_pin(message.topic)
-    target_state = value in ON_VALUES
-
-    if bool(PI.read(gpio)) == target_state:
-        LOGGER.warning("Pin %i already in state %s", gpio, target_state)
-        return
-
-    # Enforce a cooldown period between pin changes
-    if (time_to_wait := NEXT_CHANGE.get(gpio, 0) - time.time()) > 0:
-        LOGGER.warning("Waiting %.3f seconds before changing pin %i", time_to_wait, gpio)
-        time.sleep(time_to_wait)
-
-    LOGGER.info("Setting pin %i to %s", gpio, target_state)
-
-    PI.write(gpio, target_state)
-
-
 @MQTT.connect_callback()
 def on_connect(
     client: mqtt.Client,
@@ -163,11 +137,55 @@ def backoff_reconnect() -> None:
     MQTT.reconnect()
 
 
+@MQTT.message_callback()
+def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
+    """Process env vars on MQTT message.
+
+    Args:
+        message (MQTTMessage): the message object from the MQTT subscription
+    """
+    if (value := message.payload.decode()) not in ON_VALUES + OFF_VALUES:
+        raise ValueError(
+            f"Invalid value received ({value}). Must be one of: "
+            f"{ON_VALUES + OFF_VALUES}",
+        )
+
+    LOGGER.info("Received message %r on topic %r", value, message.topic)
+
+    gpio = get_pin(message.topic)
+    target_state = value in ON_VALUES
+
+    if bool(PI.read(gpio)) == target_state:
+        LOGGER.warning("Pin %i already in state %s", gpio, target_state)
+        return
+
+    # Enforce a cooldown period between pin changes
+    if (time_to_wait := NEXT_CHANGE.get(gpio, 0) - time.time()) > 0:
+        LOGGER.warning("Waiting %.3f seconds before changing pin %i", time_to_wait, gpio)
+        time.sleep(time_to_wait)
+
+    LOGGER.info(
+        "Setting pin %i (%s) to %s",
+        gpio,
+        message.topic.split("/")[-1],
+        target_state,
+    )
+
+    DISABLE_PIN_CALLBACK[gpio] = True
+
+    PI.write(gpio, target_state)
+
+
 def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
     """Callback for when the pin changes state."""
     _ = tick
 
     if level == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
+        return
+
+    if DISABLE_PIN_CALLBACK.get(gpio):
+        LOGGER.debug("Suppressed outgoing MQTT message for pin %i", gpio)
+        DISABLE_PIN_CALLBACK[gpio] = False
         return
 
     NEXT_CHANGE[gpio] = time.time() + COOLDOWN
@@ -195,10 +213,12 @@ def main() -> None:
 
     topic_suffix_pin_mapping: dict[str, int] = loads(MAPPING_FILE.read_text())
 
-    for suffix, pin in topic_suffix_pin_mapping.items():
-        topic = f"/homeassistant/{HOSTNAME}/gpio/{suffix}"
+    for pin in topic_suffix_pin_mapping.values():
+        topic = get_topic(pin)
 
-        MQTT.subscribe(topic)
+        MQTT.subscribe(topic, qos=2)
+
+        LOGGER.info("Subscribed to topic %r", topic)
 
         PI.callback(pin, pigpio.EITHER_EDGE, pin_callback)
 
