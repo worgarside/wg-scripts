@@ -61,7 +61,7 @@ stop-all:
 	@for service in $(SERVICES); do \
 		if sudo systemctl list-unit-files | grep -q "$$service.service"; then \
 			echo "Stopping $$service.service"; \
-			sudo systemctl stop $$service.service; \
+			$(MAKE) stop-$$service.service; \
 		else \
 			echo "$$service.service is not installed"; \
 		fi \
@@ -76,11 +76,21 @@ status-all:
 		fi \
 	done
 
+reinstall-all:
+	@for service in $(SERVICES); do \
+		if sudo systemctl list-unit-files | grep -q "$$service.service"; then \
+			echo "Reinstalling $$service.service"; \
+			$(MAKE) install-$$service; \
+		else \
+			echo "$$service.service is not installed"; \
+		fi \
+	done
+
 restart-all:
 	@for service in $(SERVICES); do \
 		if sudo systemctl list-unit-files | grep -q "$$service.service"; then \
 			echo "Restarting $$service.service"; \
-			sudo systemctl restart $$service.service; \
+			$(MAKE) restart-$$service.service; \
 		else \
 			echo "$$service.service is not installed"; \
 		fi \
