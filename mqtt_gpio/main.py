@@ -170,17 +170,19 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
     if level == NewPinState.WATCHDOG_TIMEOUT_NO_CHANGE:
         return
 
-    NEXT_CHANGE[gpio] = time.time()
+    NEXT_CHANGE[gpio] = time.time() + COOLDOWN
 
     topic = get_topic(gpio)
     payload = bool(level)
 
     LOGGER.info(
-        "GPIO pin %i changed state to %r. Publishing %r to %r.",
+        "GPIO pin %i changed state to %r. Publishing %r to %r; cooldown until %i (%s).",
         gpio,
         level,
         payload,
         topic,
+        NEXT_CHANGE[gpio],
+        time.ctime(NEXT_CHANGE[gpio]),
     )
 
     MQTT.publish(topic, payload, retain=True, qos=2)
