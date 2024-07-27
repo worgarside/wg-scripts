@@ -18,6 +18,8 @@ update:
 
 # Service Commands
 
+SERVICES := $(shell ls -d */ | cut -f1 -d'/')
+
 include .env
 export
 
@@ -46,8 +48,40 @@ setup-%:
 start-%:
 	sudo systemctl start $*.service
 
+status-%:
+	sudo systemctl status $*.service
+
 stop-%:
 	sudo systemctl stop $*.service
 
 tail-%:
 	clear && sudo journalctl -u $*.service -f -n 50
+
+stop-all:
+	@for service in $(SERVICES); do \
+		if sudo systemctl list-unit-files | grep -q "$$service.service"; then \
+			echo "Stopping $$service.service"; \
+			sudo systemctl stop $$service.service; \
+		else \
+			echo "$$service.service is not installed"; \
+		fi \
+	done
+
+status-all:
+	@for service in $(SERVICES); do \
+		if sudo systemctl list-unit-files | grep -q "$$service.service"; then \
+			echo "$$service.service: is $$(systemctl is-active $$service.service) and $$(systemctl is-enabled $$service.service)"; \
+		else \
+			echo "$$service.service is not installed"; \
+		fi \
+	done
+
+restart-all:
+	@for service in $(SERVICES); do \
+		if sudo systemctl list-unit-files | grep -q "$$service.service"; then \
+			echo "Restarting $$service.service"; \
+			sudo systemctl restart $$service.service; \
+		else \
+			echo "$$service.service is not installed"; \
+		fi \
+	done
