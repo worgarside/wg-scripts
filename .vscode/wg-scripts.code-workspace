@@ -15,6 +15,12 @@
 	"settings": {
 		"files.associations": {
 			"*.yaml": "home-assistant"
-		}
+		},
+		"cSpell.words": [
+			"COOLDOWN",
+			"homeassistant",
+			"pigpio",
+			"userdata"
+		]
 	}
 }

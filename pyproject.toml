@@ -19,13 +19,11 @@ pigpio = "*"
 dot3k = { version = "*", platform = "linux" }
 rpi-gpio = { version = "*", platform = "linux" }
 
-[tool.poetry.group.dev.dependencies]
-pre-commit = "^3.7.1"
-
 # Tool Configs
 
 [tool.mypy]
 check_untyped_defs = true
+mypy_path = "src"
 
 disallow_any_generics = true
 disallow_incomplete_defs = true
@@ -95,6 +93,7 @@ lint.ignore = [
   "EM",     # https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
   "ANN",    # https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
   "BLE",    # https://docs.astral.sh/ruff/rules/blind-except/
+  "TID252", # https://docs.astral.sh/ruff/rules/relative-imports/
 ]
 
 [tool.ruff.lint.per-file-ignores]

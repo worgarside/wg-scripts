@@ -1,5 +1,5 @@
 [Unit]
-Description=Pi Stats Reporting Service
+Description=Climate Monitor Service
 After=multi-user.target
 StartLimitBurst=10
 StartLimitIntervalSec=10
@@ -10,7 +10,7 @@ Restart=always
 RestartSec=5
 User=pi
 EnvironmentFile=/home/pi/wg-scripts/.env
-ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/all_pis/pi_stats/main.py
+ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/src/services/climate_monitor/main.py
 WorkingDirectory=/home/pi/wg-scripts
 
 [Install]
