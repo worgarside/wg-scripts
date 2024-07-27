@@ -7,42 +7,26 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from json import dumps
 from logging import WARNING
-from os import environ, getenv, getloadavg
+from os import getloadavg
 from time import sleep, time
-from typing import TYPE_CHECKING, Any, Final, TypedDict
+from typing import Final, TypedDict
 
-import paho.mqtt.client as mqtt
-from paho.mqtt.enums import CallbackAPIVersion
 from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
 from wg_utilities.decorators import process_exception
-from wg_utilities.functions import backoff, run_cmd
+from wg_utilities.functions import run_cmd
 from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
 
-if TYPE_CHECKING:
-    from paho.mqtt.properties import Properties
-    from paho.mqtt.reasoncodes import ReasonCode
+from utils import const, mqtt
 
 LOGGER = get_streaming_logger(__name__)
 
 add_warehouse_handler(LOGGER, level=WARNING)
 
-
-# =============================================================================
-# Environment Variables
-
-HOSTNAME = getenv("HOSTNAME", socket.gethostname())
-MQTT_USERNAME = getenv("MQTT_USERNAME", HOSTNAME)
-MQTT_PASSWORD = environ["MQTT_PASSWORD"]
-MQTT_HOST: Final[str] = environ["MQTT_HOST"]
-
 # =============================================================================
 # Constants
 
-IP_FALLBACK: Final = f"{HOSTNAME}.local"
+IP_FALLBACK: Final = f"{const.HOSTNAME}.local"
 ONE_MINUTE: Final = 60
-
-MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
-MQTT.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
 
 
 class Stats(TypedDict):
@@ -106,7 +90,7 @@ class RaspberryPi:
         tz=UTC,
     ).isoformat()
 
-    STATS_TOPIC: Final[str] = f"/homeassistant/{HOSTNAME}/stats"
+    STATS_TOPIC: Final[str] = f"/homeassistant/{const.HOSTNAME}/stats"
 
     def get_stats(self) -> Stats:
         """Get the current stats for the Pi.
@@ -202,69 +186,26 @@ class RaspberryPi:
         return int(time() - self.BOOT_TIME)
 
 
-@MQTT.connect_callback()
-def on_connect(
-    client: mqtt.Client,
-    userdata: Any,
-    flags: mqtt.ConnectFlags,
-    rc: ReasonCode,
-    properties: Properties | None,
-) -> None:
-    """Callback for when the MQTT client connects."""
-    _ = client, userdata, flags, properties
-
-    if rc == 0:
-        LOGGER.info("Connected to MQTT broker")
-    else:
-        LOGGER.error("Failed to connect to MQTT broker: %s", rc)
-
-
-@MQTT.disconnect_callback()
-def on_disconnect(
-    client: mqtt.Client,
-    userdata: Any,
-    flags: mqtt.DisconnectFlags,
-    rc: ReasonCode,
-    properties: Properties | None,
-) -> None:
-    """Callback for when the MQTT client disconnects."""
-    _ = client, userdata, flags, properties
-
-    if rc != 0:
-        LOGGER.error("Unexpected disconnection from MQTT broker: %r", rc)
-        backoff_reconnect()
-
-
-@backoff(logger=LOGGER, max_delay=10, timeout=120)
-def backoff_reconnect() -> None:
-    """Reconnect to the MQTT broker."""
-    MQTT.reconnect()
-
-
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Sends system stats to Home Assistant every minute."""
     rasp_pi = RaspberryPi()
 
-    MQTT.connect(MQTT_HOST)
-    MQTT.loop_start()
+    mqtt.CLIENT.connect(const.MQTT_HOST)
+    mqtt.CLIENT.loop_start()
 
     # This is done as a while loop, rather than a cron job, so that instantiating the
     # pi etc. every time doesn't influence the readings
     while True:
-        if not MQTT.is_connected():
-            LOGGER.warning("MQTT client is not connected. Reconnecting...")
-            backoff_reconnect()
-
         try:
-            MQTT.publish(
+            mqtt.CLIENT.publish(
                 topic=rasp_pi.STATS_TOPIC,
                 payload=dumps(rasp_pi.get_stats()),
                 retain=True,
                 qos=1,
             )
         except TimeoutError:
-            LOGGER.exception("%s timed out sending stats", HOSTNAME)
+            LOGGER.exception("%s timed out sending stats", const.HOSTNAME)
 
         sleep(ONE_MINUTE)
 

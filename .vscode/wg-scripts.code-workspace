@@ -19,7 +19,8 @@
 		"cSpell.words": [
 			"COOLDOWN",
 			"homeassistant",
-			"pigpio"
+			"pigpio",
+			"userdata"
 		]
 	}
 }

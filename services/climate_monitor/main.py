@@ -7,15 +7,15 @@ from colorsys import hsv_to_rgb
 from datetime import datetime
 from json import dumps
 from logging import WARNING, getLogger
-from os import getenv
 from time import sleep
 from typing import TYPE_CHECKING, Any, Final
 
-from paho.mqtt.publish import single
 from pigpio import pi  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
+
+from utils import const, mqtt
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -120,14 +120,6 @@ BLUE = 13
 
 TEMP_LINE = f"Temp:  {{0:.1f}}{chr(223)}C"
 HUMID_LINE = "Humid: {0:.2f}%"
-
-MQTT_AUTH_KWARGS = {
-    "hostname": getenv("MQTT_HOST"),
-    "auth": {
-        "username": getenv("MQTT_USERNAME"),
-        "password": getenv("MQTT_PASSWORD"),
-    },
-}
 
 
 class DisplayOTron:
@@ -264,16 +256,19 @@ def main() -> None:
                     HUMID_LINE.format(dht22.humidity),
                 ],
             )
-            single(
-                "/homeassistant/flmtpi/dht22",
+
+            mqtt.CLIENT.publish(
+                f"/homeassistant/{const.HOSTNAME}/dht22",
                 payload=dumps(
                     {
                         "temperature": round(dht22.temperature, 2),
                         "humidity": round(dht22.humidity, 2),
                     },
                 ),
-                **MQTT_AUTH_KWARGS,  # type: ignore[arg-type]
+                qos=1,
+                retain=True,
             )
+
             sleep(LOOP_DELAY_SECONDS)
 
     except Exception:

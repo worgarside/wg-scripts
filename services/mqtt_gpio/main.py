@@ -2,27 +2,23 @@
 
 from __future__ import annotations
 
-import re
 import time
 from enum import IntEnum
 from functools import lru_cache
 from json import loads
 from logging import WARNING
-from os import environ, getenv
+from os import getenv
 from pathlib import Path
-from socket import gethostname
 from typing import TYPE_CHECKING, Any, Final
 
-import paho.mqtt.client as mqtt
 import pigpio  # type: ignore[import-untyped]
-from paho.mqtt.enums import CallbackAPIVersion
 from wg_utilities.decorators import process_exception
-from wg_utilities.functions import backoff
 from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
 
+from utils import const, mqtt
+
 if TYPE_CHECKING:
-    from paho.mqtt.properties import Properties
-    from paho.mqtt.reasoncodes import ReasonCode
+    from paho.mqtt.client import MQTTMessage
 
 LOGGER = get_streaming_logger(__name__)
 
@@ -34,8 +30,6 @@ add_warehouse_handler(LOGGER, level=WARNING)
 ON_VALUES: Final = (True, 1, "1", "on", "true", "True")
 OFF_VALUES: Final = (False, 0, "0", "off", "false", "False")
 
-KEBAB_PATTERN = re.compile(r"^(?:[a-z0-9]+-?)+[a-z0-9]+$")
-"""Pattern for `kebab-case` strings."""
 
 MAPPING_FILE: Final = Path(__file__).parent / "gpio_mapping.json"
 
@@ -46,7 +40,6 @@ e.g. {"cpu-fan": 17}
 """
 
 PI: Final = pigpio.pi()
-
 
 NEXT_CHANGE: dict[int, float] = {}
 """Mapping of GPIO pins to the next epoch time they can be changed."""
@@ -63,14 +56,6 @@ Used to stop infinite loops of messages when the pin is changed by the script.
 COOLDOWN: Final = int(getenv("GPIO_COOLDOWN", "5"))
 """Minimum time between pin changes in seconds."""
 
-HOSTNAME: Final = getenv("HOSTNAME", gethostname())
-MQTT_USERNAME: Final = getenv("MQTT_USERNAME", HOSTNAME)
-MQTT_PASSWORD: Final = environ["MQTT_PASSWORD"]
-MQTT_HOST: Final = environ["MQTT_HOST"]
-
-MQTT = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
-MQTT.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
-
 
 class NewPinState(IntEnum):
     """Enum for the possible states of the pin."""
@@ -86,10 +71,10 @@ def get_topic(pin: int) -> str:
     if not (suffix := next((k for k, v in MAPPING.items() if v == pin), None)):
         raise ValueError(f"Pin {pin} not found in mapping")
 
-    if not KEBAB_PATTERN.fullmatch(suffix):
+    if not const.KEBAB_PATTERN.fullmatch(suffix):
         raise ValueError(f"Invalid suffix: {suffix}")
 
-    return f"/homeassistant/{HOSTNAME}/gpio/{suffix}"
+    return f"/homeassistant/{const.HOSTNAME}/gpio/{suffix}"
 
 
 @lru_cache(maxsize=len(MAPPING))
@@ -98,47 +83,8 @@ def get_pin(topic: str) -> int:
     return MAPPING[topic.split("/")[-1]]
 
 
-@MQTT.connect_callback()
-def on_connect(
-    client: mqtt.Client,
-    userdata: Any,
-    flags: mqtt.ConnectFlags,
-    rc: ReasonCode,
-    properties: Properties | None,
-) -> None:
-    """Callback for when the MQTT client connects."""
-    _ = client, userdata, flags, properties
-
-    if rc == 0:
-        LOGGER.info("Connected to MQTT broker")
-    else:
-        LOGGER.error("Failed to connect to MQTT broker: %s", rc)
-
-
-@MQTT.disconnect_callback()
-def on_disconnect(
-    client: mqtt.Client,
-    userdata: Any,
-    flags: mqtt.DisconnectFlags,
-    rc: ReasonCode,
-    properties: Properties | None,
-) -> None:
-    """Callback for when the MQTT client disconnects."""
-    _ = client, userdata, flags, properties
-
-    if rc != 0:
-        LOGGER.error("Unexpected disconnection from MQTT broker: %r", rc)
-        backoff_reconnect()
-
-
-@backoff(logger=LOGGER, max_delay=10, timeout=120)
-def backoff_reconnect() -> None:
-    """Reconnect to the MQTT broker."""
-    MQTT.reconnect()
-
-
-@MQTT.message_callback()
-def on_message(_: Any, __: Any, message: mqtt.MQTTMessage) -> None:
+@mqtt.CLIENT.message_callback()
+def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
     """Process env vars on MQTT message.
 
     Args:
@@ -203,26 +149,26 @@ def pin_callback(gpio: int, level: NewPinState, tick: int) -> None:
         time.ctime(NEXT_CHANGE[gpio]),
     )
 
-    MQTT.publish(topic, payload, retain=True, qos=2)
+    mqtt.CLIENT.publish(topic, payload, retain=True, qos=2)
 
 
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Main function."""
-    MQTT.connect(MQTT_HOST)
+    mqtt.CLIENT.connect(const.MQTT_HOST)
 
     topic_suffix_pin_mapping: dict[str, int] = loads(MAPPING_FILE.read_text())
 
     for pin in topic_suffix_pin_mapping.values():
         topic = get_topic(pin)
 
-        MQTT.subscribe(topic, qos=2)
+        mqtt.CLIENT.subscribe(topic, qos=2)
 
         LOGGER.info("Subscribed to topic %r", topic)
 
         PI.callback(pin, pigpio.EITHER_EDGE, pin_callback)
 
-    MQTT.loop_forever()
+    mqtt.CLIENT.loop_forever()
 
 
 if __name__ == "__main__":

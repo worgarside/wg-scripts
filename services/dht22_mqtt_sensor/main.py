@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from json import dumps
 from logging import WARNING, getLogger
-from os import environ, getenv
-from socket import gethostname
+from os import environ
 from time import sleep
 from typing import Final
 
 import pigpio  # type: ignore[import-untyped]
-from paho.mqtt.publish import single
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import add_warehouse_handler
+
+from utils import const, mqtt
 
 LOGGER = getLogger(__name__)
 LOGGER.setLevel("INFO")
@@ -23,8 +23,6 @@ add_warehouse_handler(LOGGER, level=WARNING)
 # =============================================================================
 # Constants
 
-PI = pigpio.pi()
-
 LOOP_DELAY_SECONDS: Final = 30
 
 # =============================================================================
@@ -32,18 +30,16 @@ LOOP_DELAY_SECONDS: Final = 30
 
 DHT22_PIN: Final[int] = int(environ["DHT22_PIN"])
 
-HOSTNAME = getenv("HOSTNAME", gethostname())
-MQTT_USERNAME = getenv("MQTT_USERNAME", HOSTNAME)
-MQTT_PASSWORD = environ["MQTT_PASSWORD"]
-MQTT_HOST: Final[str] = environ["MQTT_HOST"]
-
-MQTT_TOPIC: Final = f"/homeassistant/{HOSTNAME}/dht22"
+MQTT_TOPIC: Final = f"/homeassistant/{const.HOSTNAME}/dht22"
 
 
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Take temp/humidity readings and upload them to HA."""
-    dht22 = DHT22Sensor(PI, DHT22_PIN)
+    pi = pigpio.pi()
+    dht22 = DHT22Sensor(pi, DHT22_PIN)
+
+    mqtt.CLIENT.connect(const.MQTT_HOST)
 
     while True:
         dht22.trigger()
@@ -59,7 +55,7 @@ def main() -> None:
             sleep(LOOP_DELAY_SECONDS)
             continue
 
-        single(
+        mqtt.CLIENT.publish(
             MQTT_TOPIC,
             payload=dumps(
                 {
@@ -67,13 +63,8 @@ def main() -> None:
                     "humidity": rhum,
                 },
             ),
-            hostname=MQTT_HOST,
-            auth={
-                "username": MQTT_USERNAME,
-                "password": MQTT_PASSWORD,
-            },
-            retain=True,
             qos=1,
+            retain=True,
         )
 
         sleep(LOOP_DELAY_SECONDS)
