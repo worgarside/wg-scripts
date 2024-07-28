@@ -13,7 +13,6 @@ wg-utilities = { extras = [
   "exceptions",
   "logging",
 ], version = "^5.7.0" }
-paho-mqtt = "*"
 psutil = "*"
 pigpio = "*"
 dot3k = { version = "*", platform = "linux" }

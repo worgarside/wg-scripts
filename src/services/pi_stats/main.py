@@ -199,7 +199,7 @@ def main() -> None:
             mqtt.CLIENT.publish(
                 topic=rasp_pi.STATS_TOPIC,
                 payload=dumps(rasp_pi.get_stats()),
-                retain=True,
+                retain=False,
                 qos=1,
             )
         except TimeoutError:
