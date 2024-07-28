@@ -151,20 +151,6 @@ files = [
 ]
 
 [[package]]
-name = "paho-mqtt"
-version = "2.1.0"
-description = "MQTT version 5.0/3.1.1 client class"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "paho_mqtt-2.1.0-py3-none-any.whl", hash = "sha256:6db9ba9b34ed5bc6b6e3812718c7e06e2fd7444540df2455d2c51bd58808feee"},
-    {file = "paho_mqtt-2.1.0.tar.gz", hash = "sha256:12d6e7511d4137555a3f6ea167ae846af2c7357b10bc6fa4f7c3968fc1723834"},
-]
-
-[package.extras]
-proxy = ["pysocks"]
-
-[[package]]
 name = "pigpio"
 version = "1.78"
 description = "Raspberry Pi GPIO module"
@@ -342,4 +328,4 @@ testing = ["botocore"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "75896cb4dbbaca362a67b96306e256f9ff5c91bb13a1bd1a754b4beaced51a65"
+content-hash = "364d0681c8a7d23bb4d17ffaa9ccc13737661a6ab4fbf20a1cf3f78439ff7c0f"
