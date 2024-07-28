@@ -12,6 +12,7 @@ wg-utilities = { extras = [
   "devices.dht22",
   "exceptions",
   "logging",
+  "mqtt",
 ], version = "^5.7.0" }
 psutil = "*"
 pigpio = "*"
