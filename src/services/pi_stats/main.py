@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import socket
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
 from json import dumps
 from logging import WARNING
 from os import getloadavg
 from time import sleep, time
-from typing import Final, TypedDict
+from typing import ClassVar, Final, TypedDict
 
-from psutil import boot_time, cpu_percent, disk_usage, virtual_memory
+import psutil
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import run_cmd
 from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
@@ -77,18 +78,18 @@ def local_ip() -> str:
     return str(ip)
 
 
+@dataclass
 class RaspberryPi:
     """Class to represent a Pi and its current statistics."""
 
-    ACTIVE_GIT_REF: Final[str] = local_git_ref()
+    ACTIVE_GIT_REF: ClassVar[str] = local_git_ref()
 
-    BOOT_TIME: Final[float] = boot_time()
-    BOOT_TIME_ISOFORMAT: Final[str] = datetime.fromtimestamp(
-        BOOT_TIME,
-        tz=UTC,
-    ).isoformat()
+    STATS_TOPIC: ClassVar[str] = f"/homeassistant/{mqtt.HOSTNAME}/stats"
 
-    STATS_TOPIC: Final[str] = f"/homeassistant/{mqtt.HOSTNAME}/stats"
+    boot_time: float = field(default_factory=psutil.boot_time)
+    boot_time_iso: str = field(init=False)
+
+    get_count: int = 0
 
     def get_stats(self) -> Stats:
         """Get the current stats for the Pi.
@@ -107,11 +108,19 @@ class RaspberryPi:
             self.uptime,
         )
 
-        if uptime % 300 < ONE_MINUTE:
+        if self.get_count % 5 == 0:
             local_git_ref.cache_clear()
             local_ip.cache_clear()
+
+            self.boot_time = psutil.boot_time()
+            self.boot_time_iso = datetime.fromtimestamp(
+                self.boot_time,
+                tz=UTC,
+            ).isoformat()
         elif local_ip() == IP_FALLBACK:
             local_ip.cache_clear()
+
+        self.get_count += 1
 
         return Stats(
             cpu_usage=cpu_usage,
@@ -122,7 +131,7 @@ class RaspberryPi:
             load_5m=load_5m,
             load_15m=load_15m,
             uptime=uptime,
-            boot_time=self.BOOT_TIME_ISOFORMAT,
+            boot_time=self.boot_time_iso,
             local_git_ref=local_git_ref(),
             active_git_ref=self.ACTIVE_GIT_REF,
             local_ip=local_ip(),
@@ -145,7 +154,7 @@ class RaspberryPi:
         Returns:
             float: the current disk usage percentage.
         """
-        return float(round(disk_usage("/home").percent, 2))
+        return float(round(psutil.disk_usage("/home").percent, 2))
 
     @property
     def memory_usage(self) -> float:
@@ -154,7 +163,7 @@ class RaspberryPi:
         Returns:
             float: the percentage of memory currently in use.
         """
-        return float(round(virtual_memory().percent, 2))
+        return float(round(psutil.virtual_memory().percent, 2))
 
     @property
     def cpu_usage(self) -> float:
@@ -163,7 +172,7 @@ class RaspberryPi:
         Returns:
             float: the percentage of CPU currently in use.
         """
-        return float(round(cpu_percent(), 2))
+        return float(round(psutil.cpu_percent(), 2))
 
     @property
     def load_averages(self) -> tuple[float, float, float]:
@@ -181,7 +190,7 @@ class RaspberryPi:
         Returns:
             int: the current uptime in seconds.
         """
-        return int(time() - self.BOOT_TIME)
+        return int(time() - self.boot_time)
 
 
 @process_exception(logger=LOGGER)
