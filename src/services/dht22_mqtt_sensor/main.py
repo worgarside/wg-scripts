@@ -53,7 +53,7 @@ def main() -> None:
             msg = mqtt.CLIENT.publish(
                 MQTT_TOPIC,
                 payload=payload,
-                qos=1,
+                qos=0,
                 retain=False,
             )
 
