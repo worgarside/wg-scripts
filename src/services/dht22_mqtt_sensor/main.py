@@ -53,7 +53,7 @@ def main() -> None:
                 payload=payload,
                 qos=1,
                 retain=False,
-            )
+            ).wait_for_publish(timeout=5)
 
             LOGGER.debug("Published DHT22 reading: %s", payload)
 
