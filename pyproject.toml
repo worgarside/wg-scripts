@@ -17,7 +17,6 @@ wg-utilities = { extras = [
 psutil = "*"
 pigpio = "*"
 dot3k = { version = "*", platform = "linux" }
-"RPi.GPIO" = { version = "*", platform = "linux" }
 
 # Tool Configs
 
