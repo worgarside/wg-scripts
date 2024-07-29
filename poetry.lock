@@ -343,4 +343,4 @@ testing = ["botocore"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "8b7edd7d6d238451fc75c9f500dcacc0444a0638fbebdb0a65c9054dd4e577bf"
+content-hash = "95c80e580b1744d72d0d9ccb4b33160a15b319a3455105f0e2cb898f004e5cb2"

@@ -22,6 +22,8 @@ LOOP_DELAY_SECONDS: Final = 30
 
 DHT22_PIN: Final[int] = int(environ["DHT22_PIN"])
 
+MQTT_TOPIC = f"/homeassistant/{mqtt.HOSTNAME}/dht22"
+
 
 @process_exception(logger=LOGGER)
 def main() -> None:
@@ -48,14 +50,23 @@ def main() -> None:
 
             payload = dumps({"temperature": temp, "humidity": rhum})
 
-            mqtt.CLIENT.publish(
-                f"/homeassistant/{mqtt.HOSTNAME}/dht22",
+            msg = mqtt.CLIENT.publish(
+                MQTT_TOPIC,
                 payload=payload,
-                qos=1,
+                qos=0,
                 retain=False,
             )
 
-            LOGGER.debug("Published DHT22 reading: %s", payload)
+            msg.wait_for_publish(timeout=5)
+
+            if msg.is_published():
+                LOGGER.debug("Published DHT22 reading to %s: %s", MQTT_TOPIC, payload)
+            else:
+                LOGGER.error(
+                    "Failed to publish DHT22 reading to %s: %s",
+                    MQTT_TOPIC,
+                    payload,
+                )
 
             sleep(LOOP_DELAY_SECONDS)
 

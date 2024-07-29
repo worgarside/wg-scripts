@@ -262,7 +262,7 @@ def main() -> None:
                         "humidity": round(dht22.humidity, 2),
                     },
                 ),
-                qos=1,
+                qos=0,
                 retain=False,
             )
 
