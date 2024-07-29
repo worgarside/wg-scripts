@@ -263,7 +263,7 @@ def main() -> None:
                     },
                 ),
                 qos=1,
-                retain=True,
+                retain=False,
             )
 
             sleep(LOOP_DELAY_SECONDS)

@@ -52,7 +52,7 @@ def main() -> None:
                 f"/homeassistant/{mqtt.HOSTNAME}/dht22",
                 payload=payload,
                 qos=1,
-                retain=True,
+                retain=False,
             )
 
             LOGGER.debug("Published DHT22 reading: %s", payload)
