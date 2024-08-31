@@ -7,21 +7,19 @@ import time
 from enum import IntEnum
 from functools import lru_cache
 from json import loads
-from logging import WARNING
 from os import getenv
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
 import pigpio  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
-from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
+from wg_utilities.loggers import get_streaming_logger
 from wg_utilities.utils import mqtt
 
 if TYPE_CHECKING:
     from paho.mqtt.client import MQTTMessage
 
 LOGGER = get_streaming_logger(__name__)
-add_warehouse_handler(LOGGER, level=WARNING)
 
 # =============================================================================
 # Constants
