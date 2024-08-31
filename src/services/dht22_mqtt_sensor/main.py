@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from contextlib import suppress
 from json import dumps
-from logging import WARNING
 from os import environ
 from time import sleep
 from typing import Final
@@ -12,11 +11,10 @@ from typing import Final
 import pigpio  # type: ignore[import-untyped]
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
-from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
+from wg_utilities.loggers import get_streaming_logger
 from wg_utilities.utils import mqtt
 
 LOGGER = get_streaming_logger(__name__)
-add_warehouse_handler(LOGGER, level=WARNING)
 
 LOOP_DELAY_SECONDS: Final = 30
 

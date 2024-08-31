@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
 from json import dumps
-from logging import WARNING
 from os import getloadavg
 from time import sleep, time
 from typing import ClassVar, Final, TypedDict
@@ -15,11 +14,10 @@ from typing import ClassVar, Final, TypedDict
 import psutil
 from wg_utilities.decorators import process_exception
 from wg_utilities.functions import run_cmd
-from wg_utilities.loggers import add_warehouse_handler, get_streaming_logger
+from wg_utilities.loggers import get_streaming_logger
 from wg_utilities.utils import mqtt
 
 LOGGER = get_streaming_logger(__name__)
-add_warehouse_handler(LOGGER, level=WARNING)
 
 # =============================================================================
 # Constants
@@ -213,6 +211,7 @@ def main() -> None:
             )
         except TimeoutError:
             LOGGER.exception("%s timed out sending stats", mqtt.HOSTNAME)
+            raise SystemExit from None
 
         sleep(ONE_MINUTE)
 
