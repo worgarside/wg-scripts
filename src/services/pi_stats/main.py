@@ -201,7 +201,7 @@ def main() -> None:
 
     # This is done as a while loop, rather than a cron job, so that instantiating the
     # pi etc. every time doesn't influence the readings
-    while True:
+    while mqtt.CLIENT.is_connected():
         try:
             mqtt.CLIENT.publish(
                 topic=rasp_pi.STATS_TOPIC,
@@ -210,10 +210,13 @@ def main() -> None:
                 qos=1,
             )
         except TimeoutError:
-            LOGGER.exception("%s timed out sending stats", mqtt.HOSTNAME)
+            LOGGER.exception("%s timed out sending stats, exiting", mqtt.HOSTNAME)
             raise SystemExit from None
 
         sleep(ONE_MINUTE)
+
+    LOGGER.info("Disconnected from MQTT broker, exiting")
+    raise SystemExit
 
 
 if __name__ == "__main__":
