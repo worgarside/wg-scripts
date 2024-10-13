@@ -25,6 +25,8 @@ LOGGER = get_streaming_logger(__name__)
 IP_FALLBACK: Final = f"{mqtt.HOSTNAME}.local"
 ONE_MINUTE: Final = 60
 
+SERVICE_START_TIME: Final = datetime.now(UTC).isoformat()
+
 
 class Stats(TypedDict):
     """Type definition for the stats dictionary."""
@@ -41,6 +43,7 @@ class Stats(TypedDict):
     local_git_ref: str
     active_git_ref: str
     local_ip: str
+    service_start_time: str
 
 
 @lru_cache(maxsize=1)
@@ -133,6 +136,7 @@ class RaspberryPi:
             local_git_ref=local_git_ref(),
             active_git_ref=self.ACTIVE_GIT_REF,
             local_ip=local_ip(),
+            service_start_time=SERVICE_START_TIME,
         )
 
     @property
