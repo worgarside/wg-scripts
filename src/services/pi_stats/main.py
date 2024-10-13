@@ -203,7 +203,10 @@ def main() -> None:
     mqtt.CLIENT.connect(mqtt.MQTT_HOST)
     mqtt.CLIENT.loop_start()
 
-    while not mqtt.CLIENT.is_connected():
+    for _ in range(120):
+        if mqtt.CLIENT.is_connected():
+            break
+
         LOGGER.info("Waiting for connection to MQTT broker...")
         sleep(1)
 
