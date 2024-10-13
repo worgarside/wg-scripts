@@ -203,6 +203,10 @@ def main() -> None:
     mqtt.CLIENT.connect(mqtt.MQTT_HOST)
     mqtt.CLIENT.loop_start()
 
+    while not mqtt.CLIENT.is_connected():
+        LOGGER.info("Waiting for connection to MQTT broker...")
+        sleep(1)
+
     # This is done as a while loop, rather than a cron job, so that instantiating the
     # pi etc. every time doesn't influence the readings
     while mqtt.CLIENT.is_connected():
