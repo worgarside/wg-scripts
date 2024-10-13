@@ -31,8 +31,15 @@ def main() -> None:
 
     mqtt.CLIENT.connect(mqtt.MQTT_HOST)
 
+    for _ in range(120):
+        if mqtt.CLIENT.is_connected():
+            break
+
+        LOGGER.info("Waiting for connection to MQTT broker...")
+        sleep(1)
+
     with suppress(KeyboardInterrupt):
-        while True:
+        while mqtt.CLIENT.is_connected():
             dht22.trigger()
             sleep(1)
 
@@ -69,8 +76,10 @@ def main() -> None:
             sleep(LOOP_DELAY_SECONDS)
 
     LOGGER.info("Shutting down DHT22 sensor")
-    mqtt.CLIENT.disconnect()
     pi.stop()
+
+    LOGGER.info("Disconnected from MQTT broker, exiting")
+    raise SystemExit
 
 
 if __name__ == "__main__":
