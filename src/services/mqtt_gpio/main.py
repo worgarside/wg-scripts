@@ -79,7 +79,7 @@ def get_topic(pin: int) -> str:
 @lru_cache(maxsize=len(MAPPING))
 def get_pin(topic: str) -> int:
     """Get the pin for a given topic."""
-    return MAPPING[topic.split("/")[-1]]
+    return MAPPING[topic.rsplit("/", maxsplit=1)[-1]]
 
 
 @mqtt.CLIENT.message_callback()
@@ -91,8 +91,7 @@ def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
     """
     if (value := message.payload.decode()) not in ON_VALUES + OFF_VALUES:
         raise ValueError(
-            f"Invalid value received ({value}). Must be one of: "
-            f"{ON_VALUES + OFF_VALUES}",
+            f"Invalid value received ({value}). Must be one of: {ON_VALUES + OFF_VALUES}",
         )
 
     LOGGER.info("Received message %r on topic %r", value, message.topic)
