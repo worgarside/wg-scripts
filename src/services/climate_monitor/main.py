@@ -36,47 +36,55 @@ except ImportError:
 
         @staticmethod
         def create_animation(
-            _anim_pos: int,
-            _anim_map: list[object],
-            _frame_rate: int,
+            anim_pos: int,
+            anim_map: list[object],
+            frame_rate: int,
         ) -> None:
             """Dummy function for creating an animation."""
+            _ = anim_pos, anim_map, frame_rate
 
         @staticmethod
-        def create_char(_char_pos: int, _char_map: list[int]) -> None:
+        def create_char(char_pos: int, char_map: list[int]) -> None:
             """Dummy function for creating a character."""
+            _ = char_pos, char_map
 
         @staticmethod
-        def set_contrast(_contrast: int) -> None:
+        def set_contrast(contrast: int) -> None:
             """Dummy function for setting LCD contracts."""
+            _ = contrast
 
         @staticmethod
-        def set_cursor_offset(_offset: int) -> None:
+        def set_cursor_offset(offset: int) -> None:
             """Dummy function for setting cursor offset."""
+            _ = offset
 
         @staticmethod
-        def set_cursor_position(_column: int, _row: int) -> None:
+        def set_cursor_position(column: int, row: int) -> None:
             """Dummy function for setting cursor position."""
+            _ = column, row
 
         @staticmethod
         def update_animations() -> None:
             """Dummy function for updating animations."""
 
         @staticmethod
-        def write(_value: str) -> None:
+        def write(value: str) -> None:
             """Dummy function for writing to the LCD."""
+            _ = value
 
     class GpioPin:
         """Dummy class for lcd import on non-Pi machine."""
 
         def ChangeDutyCycle(  # noqa: N802
             self,
-            _value: float,
+            value: float,
         ) -> None:
             """Dummy function."""
+            _ = self, value
 
-        def start(self, _value: int) -> None:
+        def start(self, value: int) -> None:
             """Dummy function."""
+            _ = self, value
 
         def stop(self) -> None:
             """Dummy function."""
@@ -92,12 +100,14 @@ except ImportError:
             """Dummy function."""
 
         @staticmethod
-        def setmode(_mode: int) -> None:
+        def setmode(mode: int) -> None:
             """Dummy function."""
+            _ = mode
 
         @staticmethod
-        def setup(_pin: int, _mode: int) -> None:
+        def setup(pin: int, mode: int) -> None:
             """Dummy function."""
+            _ = pin, mode
 
         @staticmethod
         def PWM(  # noqa: N802
