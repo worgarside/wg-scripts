@@ -1,118 +1,78 @@
-[tool.poetry]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wg_scripts"]
+
+[project]
 name = "wg-scripts"
 version = "1.3.1"
-description = ""
-authors = ["Will Garside <worgarside@gmail.com>"]
-license = "MIT"
+description = "Raspberry Pi services for MQTT, GPIO, DHT22, and system stats"
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.11"
-wg-utilities = { extras = [
-  "devices.dht22",
-  "exceptions",
-  "logging",
-  "mqtt",
-], version = "^5.7.0" }
-psutil = "*"
-pigpio = "*"
-dot3k = { version = "*", platform = "linux" }
-
-# Tool Configs
-
-[tool.mypy]
-check_untyped_defs = true
-mypy_path = "src"
-
-disallow_any_generics = true
-disallow_incomplete_defs = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = true
-disallow_untyped_defs = true
-
-explicit_package_bases = true
-
-ignore_missing_imports = false
-
-no_implicit_optional = true
-no_implicit_reexport = true
-
-show_column_numbers = true
-show_error_codes = true
-show_error_context = true
-
-strict = true
-strict_equality = true
-strict_optional = true
-
-warn_return_any = true
-warn_unused_ignores = true
-warn_unused_configs = true
-warn_redundant_casts = true
-warn_no_return = true
-warn_unreachable = true
-
-enable_error_code = [
-  "arg-type",           # Checks for argument types in function calls.
-  "assignment",         # Validates types of variable assignments.
-  "return-value",       # Ensures that return values match the declared type.
-  "call-overload",      # Validates correct use of method/function overloads.
-  "operator",           # Checks operator usage against expected types.
-  "index",              # Validates types used in indexing operations.
-  "attr-defined",       # Checks if attributes exist in classes/objects.
-  "no-untyped-call",    # Prevents calls to untyped functions in typed contexts.
-  "unreachable",        # Warns about code that can never be executed.
-  "truthy-bool",        # Ensures that boolean expressions are boolean in type.
-  "union-attr",         # Checks for attribute access in unions safely.
-  "dict-item",          # Checks for proper types used in dictionary items.
-  "unused-awaitable",   # Warns if an awaitable is not awaited.
-  "override",           # Ensures overridden methods match the signature in base class.
-  "list-item",          # Checks type consistency of list items.
-  "return",             # Ensures all code paths in a function return a value if needed.
-  "type-var",           # Ensures type variables are used correctly.
-  "valid-type",         # Validates types used in annotations are recognized.
-  "func-returns-value", # Ensures functions declared with a return type actually return a value.
+requires-python = ">=3.14"
+dependencies = [
+    "wg-utilities[devices.dht22,exceptions,logging,mqtt]>=5.7.0",
+    "psutil",
+    "pigpio",
+    "dot3k; sys_platform == 'linux'",
 ]
 
-[tool.codespell]
-skip = '*.json,*.csv,*.xml,*.txt,*.lock'
+[dependency-groups]
+dev = [
+    "basedpyright>=1.39.7",
+]
+
+[tool.basedpyright]
+typeCheckingMode = "all"
+
+include = ["src"]
+
+executionEnvironments = [
+  { root = "src" },
+]
+
+# pigpio / RPi.GPIO / dot3k are untyped or Pi-only packages
+reportMissingImports = "none"
+reportMissingTypeStubs = "none"
+reportMissingModuleSource = "none"
+reportUnnecessaryTypeIgnoreComment = "error"
+# MQTT helpers return unused status codes; pigpio APIs are untyped
+reportUnusedCallResult = "none"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUnknownArgumentType = "none"
+reportAny = "none"
+reportExplicitAny = "none"
+# Darwin stub class vs Linux module share the GPIO name across branches
+reportAssignmentType = "none"
+reportImplicitStringConcatenation = "none"
+
+pythonVersion = "3.14"
 
 [tool.ruff]
 fix = true
+preview = true
 line-length = 90
 lint.select = ["ALL"]
 lint.ignore = [
-  "ANN101", # https://docs.astral.sh/ruff/rules/missing-type-function-argument/
-  "D107",   # https://docs.astral.sh/ruff/rules/undocumented-public-init/
-  "S314",   # https://docs.astral.sh/ruff/rules/suspicious-xml-element-tree-usage/
-  "TRY003", # https://docs.astral.sh/ruff/rules/raise-vanilla-args/
-  "ISC001", # https://docs.astral.sh/ruff/rules/single-line-implicit-string-concatenation/
-  "INP001", # https://docs.astral.sh/ruff/rules/implicit-namespace-package/
-  "EM",     # https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
-  "ANN",    # https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
-  "BLE",    # https://docs.astral.sh/ruff/rules/blind-except/
-  "TID252", # https://docs.astral.sh/ruff/rules/relative-imports/
+  "CPY",
+  "TD002",
+  "EM101",
+  "EM102",
+  "INP001",
+  "TRY003",
+  "ISC001",
+  "ISC003",
+  "COM812",
+  "DOC201",
+  "DOC501",
+  "D104",
+  "D421",
+  "PLR6201",
+  "PLW0717",
+  "RUF069",
 ]
-
-[tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["D104"]
-"tests/**/*.py" = [
-  "D101",    # https://docs.astral.sh/ruff/rules/undocumented-public-class/
-  "FBT001",  # https://docs.astral.sh/ruff/rules/boolean-type-hint-positional-argument/
-  "FBT002",  # https://docs.astral.sh/ruff/rules/boolean-default-value-positional-argument/
-  "PT011",   # https://docs.astral.sh/ruff/rules/pytest-raises-too-broad/
-  "PLR0124", # https://docs.astral.sh/ruff/rules/comparison-with-itself/
-  "PLR0133", # https://docs.astral.sh/ruff/rules/comparison-of-constant/
-  "PLR2004", # https://docs.astral.sh/ruff/settings/#pylint-allow-magic-value-types
-  "S101",    # https://docs.astral.sh/ruff/rules/assert/
-  "S105",    # https://docs.astral.sh/ruff/rules/hardcoded-password-string/
-  "S106",    # https://docs.astral.sh/ruff/rules/hardcoded-password-func-arg/
-  "S113",    # https://docs.astral.sh/ruff/rules/request-without-timeout/
-  "S311",    # https://docs.astral.sh/ruff/rules/suspicious-non-cryptographic-random-usage/
-  "S324",    # https://docs.astral.sh/ruff/rules/hashlib-insecure-hash-function/
-]
-"tests/unit/helpers/mixin/test__instance_cache_mixin.py" = ["N803"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 115
@@ -121,10 +81,26 @@ max-line-length = 115
 convention = "google"
 
 [tool.ruff.lint.pylint]
-max-args = 10
+max-args = 15
+max-branches = 15
+max-public-methods = 150
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "INP001", "PLC2701", "DOC201", "S108", "S104", "TC002", "SLF001", "PLR2004"]
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = [
+  "pydantic.BaseModel",
+  "BaseModel",
+  "sqlalchemy.orm.DeclarativeBase",
+  "DeclarativeBase",
+  "Base",
+  "TypedDict",
+]
+quote-annotations = true # https://docs.astral.sh/ruff/settings/#lint_flake8-type-checking_quote-annotations
 
 [tool.ruff.format]
 quote-style = "double"
@@ -132,4 +108,42 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 docstring-code-format = true
-docstring-code-line-length = "dynamic"
+docstring-code-line-length = 100
+
+[tool.codespell]
+skip = "*.json,*.csv,*.xml,*.txt,*.lock"
+ignore-words-list = "homeassistant"
+
+[tool.semantic_release]
+tag_format = "{version}"
+version_toml = ["pyproject.toml:project.version"]
+version_variables = [
+  "src/wg_scripts/__init__.py:__version__",
+]
+major_on_zero = false
+allow_zero_version = true
+build_command = """
+    python -m pip install uv
+    uv lock --upgrade-package "$PACKAGE_NAME"
+    git add uv.lock
+    uv build
+  """
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = [
+  "build",
+  "chore",
+  "ci",
+  "deps",
+  "docs",
+  "hotfix",
+  "feat",
+  "fix",
+  "perf",
+  "style",
+  "refactor",
+  "test",
+]
+minor_tags = ["feat"]
+patch_tags = ["deps", "fix", "hotfix", "perf", "build"]
+parse_squash_commits = false
