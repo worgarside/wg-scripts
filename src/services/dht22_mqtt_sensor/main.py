@@ -8,7 +8,7 @@ from os import environ
 from time import sleep
 from typing import Final
 
-import pigpio  # type: ignore[import-untyped]
+import pigpio
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import get_streaming_logger
@@ -50,7 +50,7 @@ def main() -> None:
             if temp == float(dht22.DEFAULT_TEMP_VALUE) or rhum == float(
                 dht22.DEFAULT_RHUM_VALUE,
             ):
-                LOGGER.warning("Bad reading from DHT22")
+                LOGGER.warning("Bad reading from DHT22 on pin %i", DHT22_PIN)
                 sleep(LOOP_DELAY_SECONDS)
                 continue
 

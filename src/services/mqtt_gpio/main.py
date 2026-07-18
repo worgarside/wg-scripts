@@ -9,9 +9,9 @@ from functools import lru_cache
 from json import loads
 from os import getenv
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Final
 
-import pigpio  # type: ignore[import-untyped]
+import pigpio
 from wg_utilities.decorators import process_exception
 from wg_utilities.loggers import get_streaming_logger
 from wg_utilities.utils import mqtt
@@ -79,11 +79,11 @@ def get_topic(pin: int) -> str:
 @lru_cache(maxsize=len(MAPPING))
 def get_pin(topic: str) -> int:
     """Get the pin for a given topic."""
-    return MAPPING[topic.split("/")[-1]]
+    return MAPPING[topic.rsplit("/", maxsplit=1)[-1]]
 
 
 @mqtt.CLIENT.message_callback()
-def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
+def on_message(_client: object, _userdata: object, message: MQTTMessage) -> None:
     """Process env vars on MQTT message.
 
     Args:
@@ -91,8 +91,7 @@ def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
     """
     if (value := message.payload.decode()) not in ON_VALUES + OFF_VALUES:
         raise ValueError(
-            f"Invalid value received ({value}). Must be one of: "
-            f"{ON_VALUES + OFF_VALUES}",
+            f"Invalid value received ({value}). Must be one of: {ON_VALUES + OFF_VALUES}",
         )
 
     LOGGER.info("Received message %r on topic %r", value, message.topic)
@@ -112,7 +111,7 @@ def on_message(_: Any, __: Any, message: MQTTMessage) -> None:
     LOGGER.info(
         "Setting pin %i (%s) to %s",
         gpio,
-        message.topic.split("/")[-1],
+        message.topic.rsplit("/", maxsplit=1)[-1],
         target_state,
     )
 
