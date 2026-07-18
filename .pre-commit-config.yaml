@@ -1,45 +1,34 @@
 ---
+default_language_version:
+  python: python3.14
+
+default_install_hook_types:
+  - commit-msg
+  - pre-commit
+
 repos:
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        language_version: python3.14
+        stages:
+          - commit-msg
+
   - repo: https://github.com/worgarside/pre-commit-hooks-dependency-sync
-    rev: 1.2.1
+    rev: 1.5.1
     hooks:
       - id: sync-additional-dependencies
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
-    hooks:
-      - id: ruff-format
-      - id: ruff
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.2
-    hooks:
-      - id: mypy
         args:
-          - --strict
-          - --show-error-codes
-        additional_dependencies:
-          - paho-mqtt==2.1.0
-          - pigpio==1.78
-          - types-RPi.GPIO
-          - types-psutil>=6.0.0
-          - types-requests
-          - wg-utilities==5.16.0
+          - --package-manager=uv
 
-  - repo: https://github.com/python-poetry/poetry
-    rev: 1.8.0
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.11.28
     hooks:
-      - id: poetry-check
-      # - id: poetry-lock  # Broken in CI
-      - id: poetry-export
-        args:
-          - -f
-          - requirements.txt
-          - -o
-          - requirements.txt
+      - id: uv-lock
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
         args:
@@ -70,13 +59,36 @@ repos:
           - '4096'
 
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.35.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args:
           - --format
           - parsable
           - --strict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.21
+    hooks:
+      - id: ruff-check
+        args:
+          - --fix
+      - id: ruff-format
+
+  - repo: https://github.com/DetachHead/basedpyright-prek-mirror
+    rev: 1.39.9
+    hooks:
+      - id: basedpyright
+        name: basedpyright-src
+        files: ^(src/|pyproject\.toml$)
+        pass_filenames: false
+        additional_dependencies:
+          - paho-mqtt==2.1.0
+          - pigpio==1.78
+          - psutil==7.2.2
+          - pydantic==2.13.4
+          - requests==2.34.2
+          - wg-utilities==5.17.4
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
@@ -86,7 +98,7 @@ repos:
       - id: python-check-mock-methods
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.3.0
+    rev: v2.4.2
     hooks:
       - id: codespell
         additional_dependencies:

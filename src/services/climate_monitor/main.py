@@ -7,9 +7,9 @@ from colorsys import hsv_to_rgb
 from datetime import datetime
 from json import dumps
 from time import sleep
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Final
 
-from pigpio import pi  # type: ignore[import-untyped]
+from pigpio import pi
 from wg_utilities.decorators import process_exception
 from wg_utilities.devices.dht22 import DHT22Sensor
 from wg_utilities.loggers import get_streaming_logger
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 LOGGER = get_streaming_logger(__name__)
 
 try:
-    from dot3k import lcd as dot3k_lcd  # type: ignore[import-not-found]
+    from dot3k import lcd as dot3k_lcd
     from RPi import GPIO
 except ImportError:
     if platform.system() != "Darwin":
@@ -35,23 +35,27 @@ except ImportError:
             """Dummy function for clearing the LCD."""
 
         @staticmethod
-        def create_animation(anim_pos: int, anim_map: list[Any], frame_rate: int) -> None:
+        def create_animation(
+            _anim_pos: int,
+            _anim_map: list[object],
+            _frame_rate: int,
+        ) -> None:
             """Dummy function for creating an animation."""
 
         @staticmethod
-        def create_char(char_pos: int, char_map: list[int]) -> None:
+        def create_char(_char_pos: int, _char_map: list[int]) -> None:
             """Dummy function for creating a character."""
 
         @staticmethod
-        def set_contrast(contrast: int) -> None:
+        def set_contrast(_contrast: int) -> None:
             """Dummy function for setting LCD contracts."""
 
         @staticmethod
-        def set_cursor_offset(offset: int) -> None:
+        def set_cursor_offset(_offset: int) -> None:
             """Dummy function for setting cursor offset."""
 
         @staticmethod
-        def set_cursor_position(column: int, row: int) -> None:
+        def set_cursor_position(_column: int, _row: int) -> None:
             """Dummy function for setting cursor position."""
 
         @staticmethod
@@ -59,7 +63,7 @@ except ImportError:
             """Dummy function for updating animations."""
 
         @staticmethod
-        def write(value: str) -> None:
+        def write(_value: str) -> None:
             """Dummy function for writing to the LCD."""
 
     class GpioPin:
@@ -67,11 +71,11 @@ except ImportError:
 
         def ChangeDutyCycle(  # noqa: N802
             self,
-            value: float,
+            _value: float,
         ) -> None:
             """Dummy function."""
 
-        def start(self, value: int) -> None:
+        def start(self, _value: int) -> None:
             """Dummy function."""
 
         def stop(self) -> None:
@@ -80,19 +84,19 @@ except ImportError:
     class GPIO:  # type: ignore[no-redef]
         """Dummy class for lcd import on non-Pi machine."""
 
-        BCM = 11
-        OUT = 0
+        BCM: int = 11
+        OUT: int = 0
 
         @staticmethod
         def cleanup() -> None:
             """Dummy function."""
 
         @staticmethod
-        def setmode(mode: int) -> None:
+        def setmode(_mode: int) -> None:
             """Dummy function."""
 
         @staticmethod
-        def setup(pin: int, mode: int) -> None:
+        def setup(_pin: int, _mode: int) -> None:
             """Dummy function."""
 
         @staticmethod
@@ -120,7 +124,7 @@ HUMID_LINE = "Humid: {0:.2f}%"
 class DisplayOTron:
     """Class for writing to Pimoroni's Display-O-Tron 3000."""
 
-    LCD = dot3k_lcd
+    LCD: type = dot3k_lcd
 
     LINE_COUNT: Final[int] = 3
 
@@ -189,7 +193,7 @@ class DisplayOTron:
 
 @process_exception(logger=LOGGER)
 def rgb_generator(
-    num_steps: int = int(86400 / LOOP_DELAY_SECONDS),
+    num_steps: int | None = None,
 ) -> Iterator[tuple[float, ...]]:
     """Generator for creating RGB values in order to cycle through the colours.
 
@@ -199,8 +203,9 @@ def rgb_generator(
     Yields:
         tuple(float): a tuple of RGB intensities(?)
     """
+    steps = num_steps if num_steps is not None else int(86400 / LOOP_DELAY_SECONDS)
     hue = 0.0
-    step_val = 1.0 / num_steps
+    step_val = 1.0 / steps
 
     while True:
         rgb = hsv_to_rgb(hue, 1, 1)
