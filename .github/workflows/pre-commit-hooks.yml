@@ -60,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ secrets.WORGARSIDE_DEV_TOKEN }}
         # yamllint disable rule:line-length
         run: |
-          if [[ -z $(git status -s) ]]; then
+          if [[ -z "$(git status -s)" ]]; then
             echo "No changes to commit, something else must have gone wrong. Check previous step for more information."
             exit 1
           fi
@@ -73,7 +73,7 @@ jobs:
 
           git commit -m "style: Fixes from prek hooks" --no-verify
 
-          git push origin ${REF}
+          git push origin "${REF}"
 
           UNCOMMITTED_FILES=$(git status -s | awk '{print $2}')
 
