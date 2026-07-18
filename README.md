@@ -23,8 +23,8 @@ Common just recipes:
 just setup              # sync all dependency groups
 just run mqtt_gpio      # run a service locally
 just sync               # runtime deps only (Pi deploy)
-just update             # pull + sync + restart installed services
-just deploy 1.3.1       # checkout a tag + sync + restart
+just update             # switch to main, ff-only pull, sync, restart
+just deploy 1.3.1       # dirty-check, checkout tag (detached), sync, restart
 ```
 
 Linting and typechecking are enforced via prek (ruff + basedpyright). Commits

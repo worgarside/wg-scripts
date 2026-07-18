@@ -118,7 +118,8 @@ restart-all:
         fi
     done
 
-# Pull latest, sync runtime deps, and restart installed services
+# Pull latest main, sync runtime deps, and restart installed services.
+# After `just deploy <tag>` (detached HEAD), this switches back to main first.
 update:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -127,13 +128,23 @@ update:
         echo "Working tree is dirty; commit or stash changes before updating." >&2
         exit 1
     fi
-    git pull --ff-only --prune
+    git fetch --prune origin
+    git switch main
+    git pull --ff-only origin main
     just sync
     just restart-all
 
-# Checkout a tag, sync runtime deps, and restart installed services
+# Checkout a release tag (detached), sync runtime deps, and restart services.
+# Rejects a dirty tree. Use `just update` later to return to main and pull.
 deploy tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! git diff --quiet || ! git diff --cached --quiet \
+        || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+        echo "Working tree is dirty; commit or stash changes before deploying." >&2
+        exit 1
+    fi
     git fetch --tags origin
-    git switch --detach --force "{{ tag }}"
+    git switch --detach "{{ tag }}"
     just sync
     just restart-all
