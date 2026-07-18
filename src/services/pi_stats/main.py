@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
 from json import dumps
-from os import getloadavg
+from os import getenv, getloadavg
 from time import sleep, time
 from typing import ClassVar, Final, TypedDict
 
@@ -27,6 +27,12 @@ ONE_MINUTE: Final = 60
 
 SERVICE_START_TIME: Final = datetime.now(UTC).isoformat()
 
+DISK_USAGE_PATHS: Final[tuple[str, ...]] = tuple(
+    path.strip()
+    for path in getenv("DISK_USAGE_PATHS", "/home").split(",")
+    if path.strip()
+)
+
 
 class Stats(TypedDict):
     """Type definition for the stats dictionary."""
@@ -34,7 +40,7 @@ class Stats(TypedDict):
     cpu_usage: float
     memory_usage: float
     temperature: float
-    disk_usage_percent: float
+    disk_usage: dict[str, float]
     load_1m: float
     load_5m: float
     load_15m: float
@@ -127,7 +133,7 @@ class RaspberryPi:
             cpu_usage=cpu_usage,
             memory_usage=memory_usage,
             temperature=temperature,
-            disk_usage_percent=self.disk_usage_percent,
+            disk_usage=self.disk_usage,
             load_1m=load_1m,
             load_5m=load_5m,
             load_15m=load_15m,
@@ -150,13 +156,22 @@ class RaspberryPi:
         return float(output.replace("temp=", "").replace("'C", ""))
 
     @property
-    def disk_usage_percent(self) -> float:
-        """Get the current disk usage percentage.
+    def disk_usage(self) -> dict[str, float]:
+        """Get the current disk usage percentage for each configured path.
 
         Returns:
-            float: the current disk usage percentage.
+            dict[str, float]: path to usage percentage mapping. Unavailable paths
+            are omitted for this sample.
         """
-        return float(round(psutil.disk_usage("/home").percent, 2))
+        usage: dict[str, float] = {}
+
+        for path in DISK_USAGE_PATHS:
+            try:
+                usage[path] = float(round(psutil.disk_usage(path).percent, 2))
+            except OSError:
+                LOGGER.exception("Failed to get disk usage for %s", path)
+
+        return usage
 
     @property
     def memory_usage(self) -> float:
