@@ -18,7 +18,7 @@ setup:
 
 # Run a service: just run mqtt_gpio
 run service:
-    uv run python src/services/{{ service }}/main.py
+    PYTHONPATH=src uv run python src/services/{{ service }}/main.py
 
 # Install a systemd unit for a service
 install service:

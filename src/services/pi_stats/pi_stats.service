@@ -10,6 +10,7 @@ Restart=always
 RestartSec=5
 User=pi
 EnvironmentFile=/home/pi/wg-scripts/.env
+Environment=PYTHONPATH=/home/pi/wg-scripts/src
 ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/src/services/pi_stats/main.py
 WorkingDirectory=/home/pi/wg-scripts
 

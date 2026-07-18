@@ -1,21 +1,22 @@
 # Pi Stats
 
-Reports system stats to an MQTT broker.
+Reports system stats to an MQTT broker and publishes Home Assistant MQTT device
+discovery so entities are created automatically.
 
 ## Environment Variables
 
 | Name | Description | Default |
 |------|-------------|---------|
 | HOSTNAME | The Pi's hostname | `<hostname>` |
-| MQT_HOST | MQTT broker host | N/A |
+| MQTT_HOST | MQTT broker host | `homeassistant.local` |
 | MQTT_USERNAME | MQTT broker username | `<hostname>` |
 | MQTT_PASSWORD | MQTT broker password | N/A |
 | DISK_USAGE_PATHS | Comma-separated filesystem paths to report usage for | `/home` |
 
 ## Payload
 
-Stats are published as JSON to `/homeassistant/<hostname>/stats`. Disk usage is a
-nested map of path to usage percentage, for example:
+Stats are published as non-retained JSON to `/homeassistant/<hostname>/stats` every
+minute. Disk usage is a nested map of path to usage percentage, for example:
 
 ```json
 {
@@ -28,3 +29,42 @@ nested map of path to usage percentage, for example:
 
 Unavailable paths are logged and omitted from that sample without stopping the rest
 of the stats payload.
+
+## MQTT Discovery
+
+On connect, `pi_stats` publishes a retained device-discovery payload to:
+
+`homeassistant/device/<hostname>_pi_stats/config`
+
+That creates one Home Assistant device containing:
+
+- 12 fixed sensors with stable legacy IDs (`sensor.<hostname>_cpu_usage`, etc.)
+- One disk-usage sensor per `DISK_USAGE_PATHS` entry
+
+Disk entity IDs use path slugs:
+
+| Path | Entity ID |
+|------|-----------|
+| `/` | `sensor.<hostname>_disk_usage_root` |
+| `/home` | `sensor.<hostname>_disk_usage_home` |
+| `/mnt/storage` | `sensor.<hostname>_disk_usage_mnt_storage` |
+
+Duplicate normalized path slugs are rejected at startup.
+
+Discovery is republished on every service start so path additions/removals update the
+device's component set.
+
+## Availability
+
+Availability is published (retained) to:
+
+`/homeassistant/<hostname>/pi_stats/availability`
+
+| Event | Payload |
+|-------|---------|
+| Connected / running | `online` |
+| Graceful shutdown | `offline` |
+| Unexpected disconnect (MQTT LWT) | `offline` |
+
+`sensor.<hostname>_cpu_usage` keeps `force_update: true` so template online sensors
+that watch `last_changed` continue to refresh every minute.

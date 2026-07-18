@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import socket
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -16,6 +17,16 @@ from wg_utilities.decorators import process_exception
 from wg_utilities.functions import run_cmd
 from wg_utilities.loggers import get_streaming_logger
 from wg_utilities.utils import mqtt
+
+from services.pi_stats.discovery import (
+    PAYLOAD_OFFLINE,
+    PAYLOAD_ONLINE,
+    availability_topic,
+    build_discovery_payload,
+    discovery_topic,
+    disk_path_slugs,
+    stats_topic,
+)
 
 LOGGER = get_streaming_logger(__name__)
 
@@ -32,6 +43,9 @@ DISK_USAGE_PATHS: Final[tuple[str, ...]] = tuple(
     for path in getenv("DISK_USAGE_PATHS", "/home").split(",")
     if path.strip()
 )
+
+AVAILABILITY_TOPIC: Final = availability_topic(mqtt.HOSTNAME)
+DISCOVERY_TOPIC: Final = discovery_topic(mqtt.HOSTNAME)
 
 
 class Stats(TypedDict):
@@ -91,7 +105,7 @@ class RaspberryPi:
 
     ACTIVE_GIT_REF: ClassVar[str] = local_git_ref()
 
-    STATS_TOPIC: ClassVar[str] = f"/homeassistant/{mqtt.HOSTNAME}/stats"
+    STATS_TOPIC: ClassVar[str] = stats_topic(mqtt.HOSTNAME)
 
     boot_time: float = field(default_factory=psutil.boot_time)
     boot_time_iso: str = field(init=False)
@@ -210,10 +224,48 @@ class RaspberryPi:
         return int(time() - self.boot_time)
 
 
+def publish_discovery() -> None:
+    """Publish retained MQTT device discovery for this host's pi_stats sensors."""
+    payload = build_discovery_payload(mqtt.HOSTNAME, DISK_USAGE_PATHS)
+    mqtt.CLIENT.publish(
+        topic=DISCOVERY_TOPIC,
+        payload=dumps(payload),
+        retain=True,
+        qos=1,
+    )
+    LOGGER.info(
+        "Published MQTT discovery for %s (%d components) to %s",
+        mqtt.HOSTNAME,
+        len(payload["cmps"]),
+        DISCOVERY_TOPIC,
+    )
+
+
+def publish_availability(payload: str) -> None:
+    """Publish retained online/offline availability for pi_stats."""
+    mqtt.CLIENT.publish(
+        topic=AVAILABILITY_TOPIC,
+        payload=payload,
+        retain=True,
+        qos=1,
+    )
+
+
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Sends system stats to Home Assistant every minute."""
+    # Fail fast on bad DISK_USAGE_PATHS before touching the broker.
+    disk_path_slugs(DISK_USAGE_PATHS)
+
     rasp_pi = RaspberryPi()
+
+    # Last will must be set before connecting so abrupt exits mark the service offline.
+    mqtt.CLIENT.will_set(
+        topic=AVAILABILITY_TOPIC,
+        payload=PAYLOAD_OFFLINE,
+        qos=1,
+        retain=True,
+    )
 
     mqtt.CLIENT.connect(mqtt.MQTT_HOST)
     mqtt.CLIENT.loop_start()
@@ -225,21 +277,42 @@ def main() -> None:
         LOGGER.info("Waiting for connection to MQTT broker...")
         sleep(1)
 
-    # This is done as a while loop, rather than a cron job, so that instantiating the
-    # pi etc. every time doesn't influence the readings
-    while mqtt.CLIENT.is_connected():
-        try:
-            mqtt.CLIENT.publish(
-                topic=rasp_pi.STATS_TOPIC,
-                payload=dumps(rasp_pi.get_stats()),
-                retain=False,
-                qos=1,
-            )
-        except TimeoutError:
-            LOGGER.exception("%s timed out sending stats, exiting", mqtt.HOSTNAME)
-            raise SystemExit from None
+    if not mqtt.CLIENT.is_connected():
+        LOGGER.error("Failed to connect to MQTT broker, exiting")
+        raise SystemExit(1)
 
-        sleep(ONE_MINUTE)
+    marked_online = False
+    try:
+        publish_discovery()
+        publish_availability(PAYLOAD_ONLINE)
+        marked_online = True
+
+        # This is done as a while loop, rather than a cron job, so that instantiating
+        # the pi etc. every time doesn't influence the readings
+        with suppress(KeyboardInterrupt):
+            while mqtt.CLIENT.is_connected():
+                try:
+                    mqtt.CLIENT.publish(
+                        topic=rasp_pi.STATS_TOPIC,
+                        payload=dumps(rasp_pi.get_stats()),
+                        retain=False,
+                        qos=1,
+                    )
+                except TimeoutError:
+                    LOGGER.exception(
+                        "%s timed out sending stats, exiting",
+                        mqtt.HOSTNAME,
+                    )
+                    raise SystemExit from None
+
+                sleep(ONE_MINUTE)
+    finally:
+        if marked_online:
+            with suppress(Exception):
+                publish_availability(PAYLOAD_OFFLINE)
+            with suppress(Exception):
+                mqtt.CLIENT.disconnect()
+                mqtt.CLIENT.loop_stop()
 
     LOGGER.info("Disconnected from MQTT broker, exiting")
     raise SystemExit
