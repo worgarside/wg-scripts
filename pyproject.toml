@@ -126,6 +126,7 @@ build_command = """
     python -m pip install uv
     uv lock --upgrade-package "$PACKAGE_NAME"
     git add uv.lock
+    uv build
   """
 
 [tool.semantic_release.commit_parser_options]

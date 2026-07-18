@@ -122,15 +122,18 @@ restart-all:
 update:
     #!/usr/bin/env bash
     set -euo pipefail
-    git add .
-    git stash push -m "Stash before update @ $(date)" || true
-    git pull --prune
+    if ! git diff --quiet || ! git diff --cached --quiet \
+        || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+        echo "Working tree is dirty; commit or stash changes before updating." >&2
+        exit 1
+    fi
+    git pull --ff-only --prune
     just sync
     just restart-all
 
 # Checkout a tag, sync runtime deps, and restart installed services
 deploy tag:
     git fetch --tags origin
-    git reset --hard {{ tag }}
+    git switch --detach --force "{{ tag }}"
     just sync
     just restart-all

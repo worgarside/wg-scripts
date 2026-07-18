@@ -111,7 +111,7 @@ def on_message(_client: object, _userdata: object, message: MQTTMessage) -> None
     LOGGER.info(
         "Setting pin %i (%s) to %s",
         gpio,
-        message.topic.split("/")[-1],
+        message.topic.rsplit("/", maxsplit=1)[-1],
         target_state,
     )
 
