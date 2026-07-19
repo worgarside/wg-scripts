@@ -31,6 +31,7 @@ from services.pi_stats.discovery import (
     save_component_ids,
     stats_topic,
 )
+from wg_scripts import __version__
 
 if TYPE_CHECKING:
     from paho.mqtt.client import Client, ConnectFlags, MQTTMessageInfo
@@ -84,6 +85,7 @@ class Stats(TypedDict):
     active_git_ref: str
     local_ip: str
     service_start_time: str
+    wg_scripts_version: str
 
 
 @lru_cache(maxsize=1)
@@ -177,6 +179,7 @@ class RaspberryPi:
             active_git_ref=self.ACTIVE_GIT_REF,
             local_ip=local_ip(),
             service_start_time=SERVICE_START_TIME,
+            wg_scripts_version=__version__,
         )
 
     @property

@@ -17,10 +17,12 @@ discovery so entities are created automatically.
 ## Payload
 
 Stats are published as non-retained JSON to `/homeassistant/<hostname>/stats` every
-minute. Disk usage is a nested map of path to usage percentage, for example:
+minute. The payload includes `wg_scripts_version` from the installed package. Disk
+usage is a nested map of path to usage percentage, for example:
 
 ```json
 {
+  "wg_scripts_version": "1.3.1",
   "disk_usage": {
     "/home": 68.4,
     "/mnt/storage": 31.2
@@ -39,7 +41,8 @@ On connect, `pi_stats` publishes a retained device-discovery payload to:
 
 That creates one Home Assistant device containing:
 
-- 12 fixed sensors with stable legacy IDs (`sensor.<hostname>_cpu_usage`, etc.)
+- Fixed sensors with stable IDs (`sensor.<hostname>_cpu_usage`,
+  `sensor.<hostname>_wg_scripts_version`, etc.)
 - One disk-usage sensor per `DISK_USAGE_PATHS` entry
 
 Disk entity IDs use path slugs:
