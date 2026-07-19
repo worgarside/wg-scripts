@@ -228,6 +228,33 @@ def _fixed_components(hostname: str) -> dict[str, dict[str, Any]]:
     return {component["unique_id"]: component for component in sensors}
 
 
+def _fan_components(hostname: str) -> dict[str, dict[str, Any]]:
+    """Build fan sensors for hosts with a Pi 5 pwmfan hwmon device."""
+    sensors = [
+        _sensor_component(
+            hostname=hostname,
+            metric="fan_speed",
+            name="Fan Speed",
+            value_template="{{ value_json.fan_speed_rpm }}",
+            icon="mdi:fan",
+            force_update=True,
+            unit_of_measurement="RPM",
+            state_class="measurement",
+        ),
+        _sensor_component(
+            hostname=hostname,
+            metric="fan_pwm",
+            name="Fan PWM",
+            value_template="{{ value_json.fan_pwm_percent }}",
+            icon="mdi:fan-speed-1",
+            force_update=True,
+            unit_of_measurement="%",
+            state_class="measurement",
+        ),
+    ]
+    return {component["unique_id"]: component for component in sensors}
+
+
 def _disk_components(
     hostname: str,
     disk_paths: tuple[str, ...] | list[str],
@@ -257,6 +284,7 @@ def build_discovery_payload(
     hostname: str,
     disk_paths: tuple[str, ...] | list[str],
     *,
+    has_fan: bool = False,
     sw_version: str = __version__,
 ) -> dict[str, Any]:
     """Build a retained MQTT device-discovery payload for pi_stats.
@@ -265,6 +293,7 @@ def build_discovery_payload(
         hostname: Pi hostname used in topics and unique IDs.
         disk_paths: Filesystem paths that appear under `disk_usage` in the state
             payload.
+        has_fan: When True, include pwmfan RPM/PWM sensors.
         sw_version: Software version advertised in the discovery origin/device.
 
     Returns:
@@ -272,6 +301,8 @@ def build_discovery_payload(
     """
     components = _fixed_components(hostname)
     components.update(_disk_components(hostname, disk_paths))
+    if has_fan:
+        components.update(_fan_components(hostname))
 
     return {
         "dev": {
@@ -300,6 +331,7 @@ def build_discovery_updates(
     disk_paths: tuple[str, ...] | list[str],
     previous_component_ids: set[str] | frozenset[str],
     *,
+    has_fan: bool = False,
     sw_version: str = __version__,
 ) -> tuple[dict[str, Any], ...]:
     """Build the ordered discovery payloads needed to update a device.
@@ -312,6 +344,7 @@ def build_discovery_updates(
         hostname: Pi hostname used in topics and unique IDs.
         disk_paths: Currently configured filesystem paths.
         previous_component_ids: Component IDs published by the previous run.
+        has_fan: When True, include pwmfan RPM/PWM sensors.
         sw_version: Software version advertised in the discovery origin/device.
 
     Returns:
@@ -321,6 +354,7 @@ def build_discovery_updates(
     clean_payload = build_discovery_payload(
         hostname,
         disk_paths,
+        has_fan=has_fan,
         sw_version=sw_version,
     )
     current_component_ids = set(clean_payload["cmps"])

@@ -12,7 +12,7 @@ from os import getenv, getloadavg
 from pathlib import Path
 from threading import Event
 from time import sleep, time
-from typing import TYPE_CHECKING, ClassVar, Final, TypedDict
+from typing import TYPE_CHECKING, ClassVar, Final, NotRequired, TypedDict
 
 import psutil
 from wg_utilities.decorators import process_exception
@@ -45,6 +45,8 @@ LOGGER = get_streaming_logger(__name__)
 
 IP_FALLBACK: Final = f"{mqtt.HOSTNAME}.local"
 ONE_MINUTE: Final = 60
+HWMON_ROOT: Final = Path("/sys/class/hwmon")
+PWM_MAX_DUTY: Final = 255
 
 SERVICE_START_TIME: Final = datetime.now(UTC).isoformat()
 
@@ -67,6 +69,7 @@ PUBLISH_TIMEOUT_SECONDS: Final = 5
 # Set from on_connect; consumed on the main thread so wait_for_publish cannot deadlock
 # the Paho network loop.
 _DISCOVERY_NEEDED: Final = Event()
+_FAN_READ_ERRORS_LOGGED: Final[set[str]] = set()
 
 
 class Stats(TypedDict):
@@ -86,6 +89,64 @@ class Stats(TypedDict):
     local_ip: str
     service_start_time: str
     wg_scripts_version: str
+    fan_speed_rpm: NotRequired[int]
+    fan_pwm_percent: NotRequired[float]
+
+
+@dataclass(frozen=True, slots=True)
+class PwmFanHwmon:
+    """Sysfs paths for a detected Pi 5 pwmfan hwmon device."""
+
+    fan_input: Path
+    pwm: Path
+
+
+@lru_cache(maxsize=1)
+def find_pwmfan_hwmon() -> PwmFanHwmon | None:
+    """Locate the Pi 5 Active Cooler pwmfan hwmon device, if present."""
+    if not HWMON_ROOT.is_dir():
+        return None
+
+    for hwmon in sorted(HWMON_ROOT.glob("hwmon*")):
+        try:
+            name = (hwmon / "name").read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+
+        if name != "pwmfan":
+            continue
+
+        fan_input = hwmon / "fan1_input"
+        pwm = hwmon / "pwm1"
+        if fan_input.is_file() and pwm.is_file():
+            LOGGER.info("Detected pwmfan hwmon at %s", hwmon)
+            return PwmFanHwmon(fan_input=fan_input, pwm=pwm)
+
+    return None
+
+
+def read_fan_stats() -> tuple[int, float] | None:
+    """Read fan RPM and PWM duty percent from pwmfan, if available.
+
+    Returns:
+        tuple[int, float] | None: ``(rpm, pwm_percent)`` when readable, otherwise
+        ``None`` (no pwmfan, or a read failure for this sample).
+    """
+    hwmon = find_pwmfan_hwmon()
+    if hwmon is None:
+        return None
+
+    try:
+        rpm = int(hwmon.fan_input.read_text(encoding="utf-8").strip())
+        pwm_raw = int(hwmon.pwm.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError) as exc:
+        error_key = type(exc).__name__
+        if error_key not in _FAN_READ_ERRORS_LOGGED:
+            _FAN_READ_ERRORS_LOGGED.add(error_key)
+            LOGGER.exception("Failed to read pwmfan stats")
+        return None
+
+    return rpm, float(round(pwm_raw / PWM_MAX_DUTY * 100, 1))
 
 
 @lru_cache(maxsize=1)
@@ -165,22 +226,29 @@ class RaspberryPi:
 
         self.get_count += 1
 
-        return Stats(
-            cpu_usage=cpu_usage,
-            memory_usage=memory_usage,
-            temperature=temperature,
-            disk_usage=self.disk_usage,
-            load_1m=load_1m,
-            load_5m=load_5m,
-            load_15m=load_15m,
-            uptime=uptime,
-            boot_time=self.boot_time_iso,
-            local_git_ref=local_git_ref(),
-            active_git_ref=self.ACTIVE_GIT_REF,
-            local_ip=local_ip(),
-            service_start_time=SERVICE_START_TIME,
-            wg_scripts_version=__version__,
-        )
+        stats: Stats = {
+            "cpu_usage": cpu_usage,
+            "memory_usage": memory_usage,
+            "temperature": temperature,
+            "disk_usage": self.disk_usage,
+            "load_1m": load_1m,
+            "load_5m": load_5m,
+            "load_15m": load_15m,
+            "uptime": uptime,
+            "boot_time": self.boot_time_iso,
+            "local_git_ref": local_git_ref(),
+            "active_git_ref": self.ACTIVE_GIT_REF,
+            "local_ip": local_ip(),
+            "service_start_time": SERVICE_START_TIME,
+            "wg_scripts_version": __version__,
+        }
+
+        if (fan_stats := read_fan_stats()) is not None:
+            fan_speed_rpm, fan_pwm_percent = fan_stats
+            stats["fan_speed_rpm"] = fan_speed_rpm
+            stats["fan_pwm_percent"] = fan_pwm_percent
+
+        return stats
 
     @property
     def cpu_temp(self) -> float:
@@ -264,6 +332,7 @@ def publish_discovery(client: Client) -> None:
         mqtt.HOSTNAME,
         DISK_USAGE_PATHS,
         previous_component_ids,
+        has_fan=find_pwmfan_hwmon() is not None,
     )
 
     for payload in payloads:
