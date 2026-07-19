@@ -8,10 +8,10 @@ StartLimitIntervalSec=10
 Type=simple
 Restart=always
 RestartSec=5
-User=pi
-EnvironmentFile=/home/pi/wg-scripts/.env
-ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/src/services/dht22_mqtt_sensor/main.py
-WorkingDirectory=/home/pi/wg-scripts
+User=@SERVICE_USER@
+EnvironmentFile=@REPO_DIR@/.env
+ExecStart=@REPO_DIR@/.venv/bin/python @REPO_DIR@/src/services/dht22_mqtt_sensor/main.py
+WorkingDirectory=@REPO_DIR@
 
 [Install]
 WantedBy=multi-user.target
