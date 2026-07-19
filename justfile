@@ -158,6 +158,34 @@ update:
     just sync
     just restart-all
 
+# Install Tailscale (if needed) and join the tailnet using this host's short
+# hostname (crtpi, growpi, …). Create a reusable auth key at
+# https://login.tailscale.com/admin/settings/keys then:
+#   just setup-tailscale tskey-auth-XXXX
+# Omit auth_key for an interactive login URL.
+setup-tailscale auth_key="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v tailscale >/dev/null 2>&1; then
+        echo "Installing Tailscale…"
+        curl -fsSL https://tailscale.com/install.sh | sh
+    else
+        echo "Tailscale already installed: $(tailscale version | head -n1)"
+    fi
+
+    hostname="$(hostname -s)"
+    up_args=(--hostname="${hostname}" --accept-dns=true)
+    if [[ -n "{{ auth_key }}" ]]; then
+        up_args+=(--auth-key="{{ auth_key }}")
+    fi
+
+    echo "Bringing Tailscale up as ${hostname}…"
+    sudo tailscale up "${up_args[@]}"
+    echo
+    sudo tailscale status
+    echo
+    echo "MagicDNS name should match WG_SCRIPTS_HOSTS (e.g. ${hostname})."
+
 # Checkout a release tag (detached), sync runtime deps, and restart services.
 # Rejects a dirty tree. Use `just update` later to return to main and pull.
 deploy tag:
