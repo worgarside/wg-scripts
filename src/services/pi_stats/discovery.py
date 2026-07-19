@@ -101,7 +101,7 @@ def _sensor_component(
 
 
 def _fixed_components(hostname: str) -> dict[str, dict[str, Any]]:
-    """Build the 12 fixed pi_stats sensor components."""
+    """Build the fixed pi_stats sensor components."""
     sensors: list[dict[str, Any]] = [
         _sensor_component(
             hostname=hostname,
@@ -203,6 +203,14 @@ def _fixed_components(hostname: str) -> dict[str, dict[str, Any]]:
             name="Active Git Ref",
             value_template="{{ value_json.active_git_ref }}",
             icon="mdi:source-branch-sync",
+            force_update=False,
+        ),
+        _sensor_component(
+            hostname=hostname,
+            metric="wg_scripts_version",
+            name="wg-scripts Version",
+            value_template="{{ value_json.wg_scripts_version }}",
+            icon="mdi:package-variant-closed",
             force_update=False,
         ),
         _sensor_component(
