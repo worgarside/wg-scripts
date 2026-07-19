@@ -12,6 +12,7 @@ discovery so entities are created automatically.
 | MQTT_USERNAME | MQTT broker username | `<hostname>` |
 | MQTT_PASSWORD | MQTT broker password | N/A |
 | DISK_USAGE_PATHS | Comma-separated filesystem paths to report usage for | `/home` |
+| PI_STATS_DISCOVERY_STATE_PATH | File used to track previously discovered components | `~/.cache/wg-scripts/pi_stats-discovery-components.json` |
 
 ## Payload
 
@@ -51,8 +52,9 @@ Disk entity IDs use path slugs:
 
 Duplicate normalized path slugs are rejected at startup.
 
-Discovery is republished on every service start so path additions/removals update the
-device's component set.
+Discovery is republished after every MQTT connection and reconnection. Previously
+published component IDs are stored locally so removing a disk path first publishes
+the Home Assistant removal tombstone, then the clean discovery payload.
 
 ## Availability
 

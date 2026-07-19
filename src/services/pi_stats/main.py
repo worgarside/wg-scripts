@@ -9,8 +9,9 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from json import dumps
 from os import getenv, getloadavg
+from pathlib import Path
 from time import sleep, time
-from typing import ClassVar, Final, TypedDict
+from typing import TYPE_CHECKING, ClassVar, Final, TypedDict
 
 import psutil
 from wg_utilities.decorators import process_exception
@@ -22,11 +23,18 @@ from services.pi_stats.discovery import (
     PAYLOAD_OFFLINE,
     PAYLOAD_ONLINE,
     availability_topic,
-    build_discovery_payload,
+    build_discovery_updates,
     discovery_topic,
     disk_path_slugs,
+    load_component_ids,
+    save_component_ids,
     stats_topic,
 )
+
+if TYPE_CHECKING:
+    from paho.mqtt.client import Client, ConnectFlags, MQTTMessageInfo
+    from paho.mqtt.properties import Properties
+    from paho.mqtt.reasoncodes import ReasonCode
 
 LOGGER = get_streaming_logger(__name__)
 
@@ -46,6 +54,13 @@ DISK_USAGE_PATHS: Final[tuple[str, ...]] = tuple(
 
 AVAILABILITY_TOPIC: Final = availability_topic(mqtt.HOSTNAME)
 DISCOVERY_TOPIC: Final = discovery_topic(mqtt.HOSTNAME)
+DISCOVERY_STATE_PATH: Final = Path(
+    getenv(
+        "PI_STATS_DISCOVERY_STATE_PATH",
+        str(Path.home() / ".cache/wg-scripts/pi_stats-discovery-components.json"),
+    ),
+)
+PUBLISH_TIMEOUT_SECONDS: Final = 5
 
 
 class Stats(TypedDict):
@@ -224,31 +239,77 @@ class RaspberryPi:
         return int(time() - self.boot_time)
 
 
-def publish_discovery() -> None:
-    """Publish retained MQTT device discovery for this host's pi_stats sensors."""
-    payload = build_discovery_payload(mqtt.HOSTNAME, DISK_USAGE_PATHS)
-    mqtt.CLIENT.publish(
-        topic=DISCOVERY_TOPIC,
-        payload=dumps(payload),
-        retain=True,
-        qos=1,
-    )
-    LOGGER.info(
-        "Published MQTT discovery for %s (%d components) to %s",
+def publish_discovery(client: Client) -> None:
+    """Publish retained MQTT device discovery, including removal tombstones."""
+    previous_component_ids = load_component_ids(DISCOVERY_STATE_PATH)
+    payloads = build_discovery_updates(
         mqtt.HOSTNAME,
-        len(payload["cmps"]),
+        DISK_USAGE_PATHS,
+        previous_component_ids,
+    )
+
+    for payload in payloads:
+        client.publish(
+            topic=DISCOVERY_TOPIC,
+            payload=dumps(payload),
+            retain=True,
+            qos=1,
+        )
+
+    clean_payload = payloads[-1]
+    component_ids = set(clean_payload["cmps"])
+    save_component_ids(DISCOVERY_STATE_PATH, component_ids)
+    LOGGER.info(
+        "Published MQTT discovery for %s (%d components, %d updates) to %s",
+        mqtt.HOSTNAME,
+        len(clean_payload["cmps"]),
+        len(payloads),
         DISCOVERY_TOPIC,
     )
 
 
-def publish_availability(payload: str) -> None:
+def publish_availability(client: Client, payload: str) -> MQTTMessageInfo:
     """Publish retained online/offline availability for pi_stats."""
-    mqtt.CLIENT.publish(
+    return client.publish(
         topic=AVAILABILITY_TOPIC,
         payload=payload,
         retain=True,
         qos=1,
     )
+
+
+def on_connect(
+    client: Client,
+    _userdata: object,
+    _connect_flags: ConnectFlags,
+    reason_code: ReasonCode,
+    _properties: Properties | None,
+) -> None:
+    """Restore discovery and availability after every successful connection."""
+    if reason_code.is_failure:
+        LOGGER.error("MQTT connection failed: %s", reason_code)
+        return
+
+    try:
+        publish_discovery(client)
+        publish_availability(client, PAYLOAD_ONLINE)
+    except Exception:
+        LOGGER.exception("Failed to publish MQTT discovery after connecting")
+
+
+def shutdown(client: Client) -> None:
+    """Flush offline availability before disconnecting cleanly."""
+    message = publish_availability(client, PAYLOAD_OFFLINE)
+    try:
+        message.wait_for_publish(timeout=PUBLISH_TIMEOUT_SECONDS)
+        if message.is_published():
+            client.disconnect()
+        else:
+            LOGGER.warning(
+                "Offline availability was not acknowledged; relying on MQTT last will",
+            )
+    finally:
+        client.loop_stop()
 
 
 @process_exception(logger=LOGGER)
@@ -266,6 +327,7 @@ def main() -> None:
         qos=1,
         retain=True,
     )
+    mqtt.CLIENT.on_connect = on_connect
 
     mqtt.CLIENT.connect(mqtt.MQTT_HOST)
     mqtt.CLIENT.loop_start()
@@ -281,16 +343,15 @@ def main() -> None:
         LOGGER.error("Failed to connect to MQTT broker, exiting")
         raise SystemExit(1)
 
-    marked_online = False
     try:
-        publish_discovery()
-        publish_availability(PAYLOAD_ONLINE)
-        marked_online = True
-
         # This is done as a while loop, rather than a cron job, so that instantiating
         # the pi etc. every time doesn't influence the readings
         with suppress(KeyboardInterrupt):
-            while mqtt.CLIENT.is_connected():
+            while True:
+                if not mqtt.CLIENT.is_connected():
+                    sleep(1)
+                    continue
+
                 try:
                     mqtt.CLIENT.publish(
                         topic=rasp_pi.STATS_TOPIC,
@@ -307,12 +368,8 @@ def main() -> None:
 
                 sleep(ONE_MINUTE)
     finally:
-        if marked_online:
-            with suppress(Exception):
-                publish_availability(PAYLOAD_OFFLINE)
-            with suppress(Exception):
-                mqtt.CLIENT.disconnect()
-                mqtt.CLIENT.loop_stop()
+        with suppress(Exception):
+            shutdown(mqtt.CLIENT)
 
     LOGGER.info("Disconnected from MQTT broker, exiting")
     raise SystemExit
