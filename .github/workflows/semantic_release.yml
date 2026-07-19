@@ -68,9 +68,9 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: python-semantic-release/python-semantic-release@350c48fcb3ffcdfd2e0a235206bc2ecea6b69df0 # v10.5.3
         with:
-          github_token: ${{ secrets.WORGARSIDE_DEV_TOKEN }}
-          git_committer_name: worgarside-dev
-          git_committer_email: worgarside.dev@gmail.com
+          github_token: ${{ secrets.WORGARSIDE_TOKEN }}
+          git_committer_name: worgarside
+          git_committer_email: worgarside@gmail.com
           config_file: pyproject.toml
           verbosity: 2
           force: ${{ inputs.force-deployment != 'auto' && inputs.force-deployment || '' }}
