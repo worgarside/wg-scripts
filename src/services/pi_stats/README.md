@@ -33,6 +33,17 @@ usage is a nested map of path to usage percentage, for example:
 Unavailable paths are logged and omitted from that sample without stopping the rest
 of the stats payload.
 
+When a Pi 5 Active Cooler (or compatible) exposes a `pwmfan` hwmon device, the
+payload also includes:
+
+| Key | Unit | Source |
+|-----|------|--------|
+| `fan_speed_rpm` | RPM | `/sys/class/hwmon/*/fan1_input` |
+| `fan_pwm_percent` | % | `/sys/class/hwmon/*/pwm1` scaled from 0–255 |
+
+These keys are omitted entirely on hosts without `pwmfan` (and for a sample if the
+sysfs read fails).
+
 ## MQTT Discovery
 
 On connect, `pi_stats` publishes a retained device-discovery payload to:
@@ -44,6 +55,7 @@ That creates one Home Assistant device containing:
 - Fixed sensors with stable IDs (`sensor.<hostname>_cpu_usage`,
   `sensor.<hostname>_wg_scripts_version`, etc.)
 - One disk-usage sensor per `DISK_USAGE_PATHS` entry
+- Fan Speed / Fan PWM sensors when `pwmfan` hwmon is detected at startup
 
 Disk entity IDs use path slugs:
 
