@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v2.0.2 (2026-07-19)
+
+### Bug Fixes
+
+- Just update
+  ([`9bf4400`](https://github.com/worgarside/wg-scripts/commit/9bf4400ce82bfb45ba78036cc9085a05da129608))
+
+### Continuous Integration
+
+- Update release invoke to be multi-option
+  ([`1213d7d`](https://github.com/worgarside/wg-scripts/commit/1213d7db4ce0c855b7bb6ed27b6d0c9f04877442))
+
+
 ## v2.0.1 (2026-07-19)
 
 ### Refactoring
