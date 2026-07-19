@@ -13,10 +13,17 @@ on:
     inputs:
       force-deployment:
         description: >-
-          Adds the `--force` flag to the `semantic-release` command. Must be set
-          to one of "prerelease", "patch", "minor", or "major".
-        required: false
-        type: string
+          Version component to force, prerelease to increment the prerelease
+          revision, or auto to use semantic commit parsing.
+        required: true
+        type: choice
+        options:
+          - auto
+          - prerelease
+          - patch
+          - minor
+          - major
+        default: auto
 
 concurrency:
   group: semantic-release
@@ -66,4 +73,4 @@ jobs:
           git_committer_email: worgarside.dev@gmail.com
           config_file: pyproject.toml
           verbosity: 2
-          force: ${{ inputs.force-deployment }}
+          force: ${{ inputs.force-deployment != 'auto' && inputs.force-deployment || '' }}
