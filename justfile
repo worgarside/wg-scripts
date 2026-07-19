@@ -86,14 +86,17 @@ setup-service service:
 _services:
     #!/usr/bin/env bash
     set -euo pipefail
-    ls -d src/services/*/ | cut -f3 -d'/'
+    find src/services -mindepth 1 -maxdepth 1 -type d ! -name '__pycache__' -exec basename {} \;
 
 # Stop all installed services
 stop-all:
     #!/usr/bin/env bash
     set -euo pipefail
     for service in $(just _services); do
-        if sudo systemctl list-unit-files | grep -q "${service}.service"; then
+        # Prefer a direct unit-file check over `list-unit-files | grep -q`.
+        # Under pipefail, an early grep match SIGPIPEs systemctl and treats
+        # installed units as missing.
+        if [[ -f "/etc/systemd/system/${service}.service" ]]; then
             echo "Stopping ${service}.service"
             just stop "${service}"
         else
@@ -106,7 +109,7 @@ status-all:
     #!/usr/bin/env bash
     set -euo pipefail
     for service in $(just _services); do
-        if sudo systemctl list-unit-files | grep -q "${service}.service"; then
+        if [[ -f "/etc/systemd/system/${service}.service" ]]; then
             echo "${service}.service is $(systemctl is-active ${service}.service) and $(systemctl is-enabled ${service}.service)"
         else
             echo "${service}.service is not installed"
@@ -118,7 +121,7 @@ reinstall-all:
     #!/usr/bin/env bash
     set -euo pipefail
     for service in $(just _services); do
-        if sudo systemctl list-unit-files | grep -q "${service}.service"; then
+        if [[ -f "/etc/systemd/system/${service}.service" ]]; then
             echo "Reinstalling ${service}.service"
             just install "${service}"
         else
@@ -131,7 +134,7 @@ restart-all:
     #!/usr/bin/env bash
     set -euo pipefail
     for service in $(just _services); do
-        if sudo systemctl list-unit-files | grep -q "${service}.service"; then
+        if [[ -f "/etc/systemd/system/${service}.service" ]]; then
             echo "Restarting ${service}.service"
             just restart "${service}"
         else
