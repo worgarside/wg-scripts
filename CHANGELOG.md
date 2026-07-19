@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v2.0.1 (2026-07-19)
+
+### Refactoring
+
+- Round system load averages to 2 decimals
+  ([#387](https://github.com/worgarside/wg-scripts/pull/387),
+  [`db9935c`](https://github.com/worgarside/wg-scripts/commit/db9935c6c5d5b1db0d0057917861e8f6b6ff32fd))
+
+
 ## v2.0.0 (2026-07-19)
 
 ### Continuous Integration
