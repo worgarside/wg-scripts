@@ -28,6 +28,13 @@ install service:
     destination_unit="/etc/systemd/system/{{ service }}.service"
     service_user="${SUDO_USER:-$(id -un)}"
     repo_dir="$(pwd -P)"
+
+    if [[ "$repo_dir" == *[!A-Za-z0-9_./-]* ]]; then
+        echo "Unsupported repository path for systemd units: $repo_dir" >&2
+        echo "Use a path containing only letters, numbers, '.', '_', '-', and '/'." >&2
+        exit 1
+    fi
+
     rendered_unit="$(mktemp)"
     trap 'rm -f "$rendered_unit"' EXIT
 
