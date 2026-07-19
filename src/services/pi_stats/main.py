@@ -235,7 +235,12 @@ class RaspberryPi:
         Returns:
             tuple: average recent system load information.
         """
-        return getloadavg()
+        load_1m, load_5m, load_15m = getloadavg()
+        return (
+            float(round(load_1m, 2)),
+            float(round(load_5m, 2)),
+            float(round(load_15m, 2)),
+        )
 
     @property
     def uptime(self) -> int:
