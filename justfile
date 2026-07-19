@@ -24,7 +24,21 @@ run service:
 install service:
     #!/usr/bin/env bash
     set -euo pipefail
-    sudo cp "src/services/{{ service }}/{{ service }}.service" /etc/systemd/system/
+    source_unit="src/services/{{ service }}/{{ service }}.service"
+    destination_unit="/etc/systemd/system/{{ service }}.service"
+    service_user="${SUDO_USER:-$(id -un)}"
+    repo_dir="$(pwd -P)"
+    rendered_unit="$(mktemp)"
+    trap 'rm -f "$rendered_unit"' EXIT
+
+    escaped_user="$(printf '%s' "$service_user" | sed 's/[\\&|]/\\&/g')"
+    escaped_repo_dir="$(printf '%s' "$repo_dir" | sed 's/[\\&|]/\\&/g')"
+    sed \
+        -e "s|@SERVICE_USER@|$escaped_user|g" \
+        -e "s|@REPO_DIR@|$escaped_repo_dir|g" \
+        "$source_unit" > "$rendered_unit"
+
+    sudo install -m 0644 "$rendered_unit" "$destination_unit"
     sudo systemctl daemon-reload
 
 # Enable a systemd service

@@ -8,11 +8,11 @@ StartLimitIntervalSec=10
 Type=simple
 Restart=always
 RestartSec=5
-User=pi
-EnvironmentFile=/home/pi/wg-scripts/.env
-Environment=PYTHONPATH=/home/pi/wg-scripts/src
-ExecStart=/home/pi/wg-scripts/.venv/bin/python /home/pi/wg-scripts/src/services/pi_stats/main.py
-WorkingDirectory=/home/pi/wg-scripts
+User=@SERVICE_USER@
+EnvironmentFile=@REPO_DIR@/.env
+Environment=PYTHONPATH=@REPO_DIR@/src
+ExecStart=@REPO_DIR@/.venv/bin/python @REPO_DIR@/src/services/pi_stats/main.py
+WorkingDirectory=@REPO_DIR@
 
 [Install]
 WantedBy=multi-user.target
