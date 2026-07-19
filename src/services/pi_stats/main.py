@@ -10,6 +10,7 @@ from functools import lru_cache
 from json import dumps
 from os import getenv, getloadavg
 from pathlib import Path
+from threading import Event
 from time import sleep, time
 from typing import TYPE_CHECKING, ClassVar, Final, TypedDict
 
@@ -61,6 +62,10 @@ DISCOVERY_STATE_PATH: Final = Path(
     ),
 )
 PUBLISH_TIMEOUT_SECONDS: Final = 5
+
+# Set from on_connect; consumed on the main thread so wait_for_publish cannot deadlock
+# the Paho network loop.
+_DISCOVERY_NEEDED: Final = Event()
 
 
 class Stats(TypedDict):
@@ -240,7 +245,12 @@ class RaspberryPi:
 
 
 def publish_discovery(client: Client) -> None:
-    """Publish retained MQTT device discovery, including removal tombstones."""
+    """Publish retained MQTT device discovery, including removal tombstones.
+
+    Must run on the main thread (not inside a Paho callback): QoS 1 acks are
+    processed by the network loop, so ``wait_for_publish`` from ``on_connect``
+    would deadlock.
+    """
     previous_component_ids = load_component_ids(DISCOVERY_STATE_PATH)
     payloads = build_discovery_updates(
         mqtt.HOSTNAME,
@@ -249,12 +259,17 @@ def publish_discovery(client: Client) -> None:
     )
 
     for payload in payloads:
-        client.publish(
+        message = client.publish(
             topic=DISCOVERY_TOPIC,
             payload=dumps(payload),
             retain=True,
             qos=1,
         )
+        message.wait_for_publish(timeout=PUBLISH_TIMEOUT_SECONDS)
+        if not message.is_published():
+            raise TimeoutError(
+                f"Discovery publish to {DISCOVERY_TOPIC} was not acknowledged",
+            )
 
     clean_payload = payloads[-1]
     component_ids = set(clean_payload["cmps"])
@@ -285,14 +300,31 @@ def on_connect(
     reason_code: ReasonCode,
     _properties: Properties | None,
 ) -> None:
-    """Restore discovery and availability after every successful connection."""
+    """Restore availability after every successful connection; schedule discovery."""
     if reason_code.is_failure:
         LOGGER.error("MQTT connection failed: %s", reason_code)
         return
 
+    LOGGER.info("Connected to MQTT broker")
+
+    # Keep availability independent of discovery so a cache/publish failure cannot
+    # leave entities stuck unavailable after an LWT offline.
+    try:
+        publish_availability(client, PAYLOAD_ONLINE)
+    except Exception:
+        LOGGER.exception("Failed to publish MQTT availability after connecting")
+
+    _DISCOVERY_NEEDED.set()
+
+
+def publish_discovery_if_needed(client: Client) -> None:
+    """Publish discovery from the main thread when a connection requested it."""
+    if not _DISCOVERY_NEEDED.is_set() or not client.is_connected():
+        return
+
+    _DISCOVERY_NEEDED.clear()
     try:
         publish_discovery(client)
-        publish_availability(client, PAYLOAD_ONLINE)
     except Exception:
         LOGGER.exception("Failed to publish MQTT discovery after connecting")
 
@@ -348,6 +380,8 @@ def main() -> None:
         # the pi etc. every time doesn't influence the readings
         with suppress(KeyboardInterrupt):
             while True:
+                publish_discovery_if_needed(mqtt.CLIENT)
+
                 if not mqtt.CLIENT.is_connected():
                     sleep(1)
                     continue
@@ -366,7 +400,11 @@ def main() -> None:
                     )
                     raise SystemExit from None
 
-                sleep(ONE_MINUTE)
+                # Chunk the interval so reconnect discovery runs promptly.
+                for _ in range(ONE_MINUTE):
+                    if _DISCOVERY_NEEDED.is_set() or not mqtt.CLIENT.is_connected():
+                        break
+                    sleep(1)
     finally:
         with suppress(Exception):
             shutdown(mqtt.CLIENT)
