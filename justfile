@@ -162,10 +162,13 @@ update:
 # hostname (crtpi, growpi, …). Create a reusable auth key at
 # https://login.tailscale.com/admin/settings/keys then:
 #   just setup-tailscale tskey-auth-XXXX
-# Omit auth_key for an interactive login URL.
-setup-tailscale auth_key="":
+setup-tailscale auth_key:
     #!/usr/bin/env bash
     set -euo pipefail
+    if [[ -z "{{ auth_key }}" ]]; then
+        echo "Usage: just setup-tailscale tskey-auth-XXXX" >&2
+        exit 1
+    fi
     if ! command -v tailscale >/dev/null 2>&1; then
         echo "Installing Tailscale…"
         curl -fsSL https://tailscale.com/install.sh | sh
@@ -173,18 +176,46 @@ setup-tailscale auth_key="":
         echo "Tailscale already installed: $(tailscale version | head -n1)"
     fi
 
-    hostname="$(hostname -s)"
-    up_args=(--hostname="${hostname}" --accept-dns=true)
-    if [[ -n "{{ auth_key }}" ]]; then
-        up_args+=(--auth-key="{{ auth_key }}")
-    fi
-
-    echo "Bringing Tailscale up as ${hostname}…"
-    sudo tailscale up "${up_args[@]}"
+    node_hostname="$(hostname -s)"
+    echo "Bringing Tailscale up as ${node_hostname}…"
+    sudo tailscale up \
+        --hostname="${node_hostname}" \
+        --accept-dns=true \
+        --auth-key="{{ auth_key }}"
     echo
     sudo tailscale status
     echo
-    echo "MagicDNS name should match WG_SCRIPTS_HOSTS (e.g. ${hostname})."
+    echo "MagicDNS name should match WG_SCRIPTS_HOSTS (e.g. ${node_hostname})."
+
+# Install the shared CI deploy SSH public key into ~/.ssh/authorized_keys.
+# Pass a .pub file path or the key line itself (same key on every Pi):
+#   just setup-deploy-key ./wg-scripts-deploy.pub
+#   just setup-deploy-key 'ssh-ed25519 AAAA... deploy'
+setup-deploy-key key:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ -z "{{ key }}" ]]; then
+        echo "Usage: just setup-deploy-key <pubkey-file-or-line>" >&2
+        exit 1
+    fi
+
+    if [[ -f "{{ key }}" ]]; then
+        pubkey="$(tr -d '\n' < "{{ key }}")"
+    else
+        pubkey="{{ key }}"
+    fi
+
+    mkdir -p "${HOME}/.ssh"
+    chmod 700 "${HOME}/.ssh"
+    touch "${HOME}/.ssh/authorized_keys"
+    chmod 600 "${HOME}/.ssh/authorized_keys"
+
+    if grep -qxF "${pubkey}" "${HOME}/.ssh/authorized_keys"; then
+        echo "Deploy key already present in ~/.ssh/authorized_keys"
+    else
+        printf '%s\n' "${pubkey}" >> "${HOME}/.ssh/authorized_keys"
+        echo "Installed deploy key into ~/.ssh/authorized_keys"
+    fi
 
 # Checkout a release tag (detached), sync runtime deps, and restart services.
 # Rejects a dirty tree. Use `just update` later to return to main and pull.

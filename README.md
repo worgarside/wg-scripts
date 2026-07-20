@@ -26,6 +26,7 @@ just sync               # runtime deps only (Pi deploy)
 just update             # switch to main, ff-only pull, sync, restart
 just deploy 1.3.1       # dirty-check, checkout tag (detached), sync, restart
 just setup-tailscale KEY  # install Tailscale and join the tailnet
+just setup-deploy-key FILE_OR_LINE  # install CI deploy SSH public key
 ```
 
 Linting and typechecking are enforced via prek (ruff + basedpyright). Commits
@@ -46,29 +47,18 @@ skips cutting a new release.
 
 ### One-time Pi setup
 
-On each Pi (over LAN SSH is fine for bootstrap):
+On each Pi (LAN SSH is fine for bootstrap). Create a reusable auth key in the
+[Tailscale admin console](https://login.tailscale.com/admin/settings/keys), then:
 
-1. Ensure the hostname is the short MagicDNS name you want (`crtpi`, `growpi`,
-   `mtrxpi`, `octopi`, `rtropi`, `vsmppi`):
+```bash
+just setup-tailscale tskey-auth-XXXX
+just setup-deploy-key ./wg-scripts-deploy.pub
+```
 
-   ```bash
-   sudo hostnamectl set-hostname crtpi
-   ```
-
-2. Join the tailnet (create a reusable auth key in the
-   [Tailscale admin console](https://login.tailscale.com/admin/settings/keys)):
-
-   ```bash
-   just setup-tailscale tskey-auth-XXXX
-   ```
-
-3. Install the shared deploy SSH public key into `~pi/.ssh/authorized_keys`
-   (CI uses one `DEPLOY_SSH_PRIVATE_KEY`, not per-host personal keys).
-
-4. Repo at `/home/pi/wg-scripts` with `just`, `uv`, and `git` already set up.
-
-Also ensure the Tailscale ACL allows `tag:ci` to SSH to these nodes (same
-client used by backplane CI).
+`setup-deploy-key` accepts a `.pub` file path or the key line itself (same key on
+every Pi; CI uses one `DEPLOY_SSH_PRIVATE_KEY`). Keep the repo at
+`/home/pi/wg-scripts` with `just` / `uv` / `git`, and allow `tag:ci` to SSH
+these nodes in the Tailscale ACL (same client as backplane CI).
 
 ### `production-deploy` environment
 
