@@ -38,9 +38,11 @@ After a successful semantic-release tag (or a manual workflow run with
 `publish-tag`), GitHub Actions joins Tailscale as an ephemeral `tag:ci` node
 and SSHs to each Pi’s MagicDNS name to run `just deploy <tag>`.
 
-Unreachable hosts are warned and skipped; they do not fail the deploy job.
-Redeploy an existing tag via **Actions → Semantic Release → Run workflow** with
-`publish-tag` set (for example `2.0.0`).
+Unreachable hosts are warned and skipped (partial failure does not fail the
+job). If every host fails, the job fails so systemic issues (bad key, Tailscale,
+missing tag) surface. Redeploy an existing tag via **Actions → Semantic
+Release → Run workflow** with `publish-tag` set (for example `2.0.0`) — that
+skips cutting a new release.
 
 ### One-time Pi setup
 
