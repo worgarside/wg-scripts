@@ -2,6 +2,31 @@
 
 <!-- version list -->
 
+## v2.1.0 (2026-07-20)
+
+### Continuous Integration
+
+- Switch to deploy key for secure releases
+  ([`1e7bde6`](https://github.com/worgarside/wg-scripts/commit/1e7bde681769b3d3fb910babbad4511c7ab9749c))
+
+- Update semantic release committer details
+  ([`8d592c7`](https://github.com/worgarside/wg-scripts/commit/8d592c7b4c1ed8ffacb4fae92544a0e938f05331))
+
+- Update ssh command for runner compatibility
+  ([`ca00f44`](https://github.com/worgarside/wg-scripts/commit/ca00f4449baecfc0d12fad03fadd570df66bf078))
+
+### Features
+
+- Add Pi 5 pwmfan RPM and PWM monitoring ([#388](https://github.com/worgarside/wg-scripts/pull/388),
+  [`01c5b8b`](https://github.com/worgarside/wg-scripts/commit/01c5b8b8be212361cecc6a59a2adf979775dd30b))
+
+- Automate deployments to target devices ([#389](https://github.com/worgarside/wg-scripts/pull/389),
+  [`4ca24f0`](https://github.com/worgarside/wg-scripts/commit/4ca24f0a271b2ac0f4c327b5c87e74d9c9de78a5))
+
+- Simplify and automate Pi setup
+  ([`f1e55be`](https://github.com/worgarside/wg-scripts/commit/f1e55beda388b6594180381495622e3a2addd229))
+
+
 ## v2.0.2 (2026-07-19)
 
 ### Bug Fixes
