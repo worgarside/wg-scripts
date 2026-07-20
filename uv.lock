@@ -301,7 +301,7 @@ wheels = [
 
 [[package]]
 name = "wg-scripts"
-version = "2.1.1"
+version = "2.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "dot3k", marker = "sys_platform == 'linux'" },

@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.1.2 (2026-07-20)
+
+### Continuous Integration
+
+- Enhance deploy workflow with Tailscale tag support
+  ([`9b69877`](https://github.com/worgarside/wg-scripts/commit/9b698774f8237b6ce3d25430352f9a6bc5803e46))
+
+
 ## v2.1.1 (2026-07-20)
 
 ### Continuous Integration
