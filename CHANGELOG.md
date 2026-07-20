@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.1.1 (2026-07-20)
+
+### Continuous Integration
+
+- Update OAuth ID source from secrets to vars
+  ([`28aff06`](https://github.com/worgarside/wg-scripts/commit/28aff06247ed42231d9e8fa432e8fbeb024ccc29))
+
+
 ## v2.1.0 (2026-07-20)
 
 ### Continuous Integration

@@ -7,7 +7,7 @@ packages = ["src/wg_scripts"]
 
 [project]
 name = "wg-scripts"
-version = "2.1.0"
+version = "2.1.1"
 description = "Raspberry Pi services for MQTT, GPIO, DHT22, and system stats"
 readme = "README.md"
 requires-python = ">=3.14"
