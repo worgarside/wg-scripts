@@ -64,8 +64,8 @@ these nodes in the Tailscale ACL (same client as backplane CI).
 
 | Kind | Name | Notes |
 |------|------|--------|
-| Secret | `TS_OAUTH_CLIENT_ID` | Same Tailscale OAuth client as backplane CI |
-| Secret | `TS_OAUTH_SECRET` | Same |
+| Var | `TS_OAUTH_CLIENT_ID` | Tailscale OAuth client ID (`tag:ci`) |
+| Secret | `TS_OAUTH_SECRET` | Matching OAuth client secret |
 | Secret | `DEPLOY_SSH_PRIVATE_KEY` | Private key matching the shared deploy key on each Pi |
 | Var | `DEPLOY_SSH_USER` | `pi` (install path `/home/pi/wg-scripts`) |
 | Var | `WG_SCRIPTS_HOSTS` | Comma-separated MagicDNS hostnames, e.g. `crtpi,growpi,mtrxpi,octopi,rtropi,vsmppi` |
