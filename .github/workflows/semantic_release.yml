@@ -73,12 +73,15 @@ jobs:
         run: |
           # Key must live inside the workspace: the PSR action is Docker-based
           # and only mounts this directory (runner ~/.ssh is invisible to it).
+          # Use relative paths so the same core.sshCommand works on the runner
+          # (/home/runner/work/...) and inside the container (/github/workspace).
           install -m 700 -d .git/ssh
           printf '%s\n' "$SEMANTIC_RELEASE_DEPLOY_KEY" > .git/ssh/deploy_key
           chmod 600 .git/ssh/deploy_key
           ssh-keyscan -t ed25519,rsa github.com > .git/ssh/known_hosts
           git remote set-url origin "git@github.com:${GITHUB_REPOSITORY}.git"
-          git config --local core.sshCommand "ssh -i ${GITHUB_WORKSPACE}/.git/ssh/deploy_key -o UserKnownHostsFile=${GITHUB_WORKSPACE}/.git/ssh/known_hosts -o IdentitiesOnly=yes"
+          git config --local core.sshCommand "ssh -i .git/ssh/deploy_key -o UserKnownHostsFile=.git/ssh/known_hosts -o IdentitiesOnly=yes"
+          git ls-remote --heads origin main
         # yamllint enable rule:line-length
 
       - name: Set up Python
