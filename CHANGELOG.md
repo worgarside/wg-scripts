@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.1.3 (2026-07-20)
+
+### Continuous Integration
+
+- Improve deploy workflow with user handling
+  ([`2f35272`](https://github.com/worgarside/wg-scripts/commit/2f3527282a680668fe796d78d4a8b3a926e18c05))
+
+
 ## v2.1.2 (2026-07-20)
 
 ### Continuous Integration
