@@ -136,11 +136,32 @@ jobs:
           TAG: ${{ inputs.publish-tag || needs.release.outputs.tag }}
           DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
           WG_SCRIPTS_HOSTS: ${{ vars.WG_SCRIPTS_HOSTS }}
+          # Optional: e.g. tag:pi — when set, discover online peers with this
+          # tag instead of using WG_SCRIPTS_HOSTS.
+          WG_SCRIPTS_TS_TAG: ${{ vars.WG_SCRIPTS_TS_TAG }}
         run: |
           set -uo pipefail
 
           INSTALL_DIR="/home/${DEPLOY_SSH_USER}/wg-scripts"
-          IFS=',' read -ra HOSTS <<< "${WG_SCRIPTS_HOSTS}"
+
+          if [[ -n "${WG_SCRIPTS_TS_TAG:-}" ]]; then
+            echo "Discovering hosts with Tailscale tag ${WG_SCRIPTS_TS_TAG}"
+            mapfile -t HOSTS < <(
+              tailscale status --json | jq -r --arg tag "$WG_SCRIPTS_TS_TAG" '
+                .Peer[]
+                | select(.Online == true)
+                | select((.Tags // []) | index($tag) != null)
+                | .HostName
+              ' | sort -u
+            )
+          else
+            IFS=',' read -ra HOSTS <<< "${WG_SCRIPTS_HOSTS}"
+          fi
+
+          if [[ ${#HOSTS[@]} -eq 0 ]]; then
+            echo "::error::No deploy hosts found (set WG_SCRIPTS_TS_TAG or WG_SCRIPTS_HOSTS)"
+            exit 1
+          fi
 
           ok=0
           failed=0
@@ -158,17 +179,27 @@ jobs:
             fi
 
             echo "::group::Deploy ${TAG} → ${host}"
+            # GHA runners often cannot resolve MagicDNS short names via system
+            # DNS; ask Tailscale's netmap for the 100.x address instead.
+            if ! ip="$(tailscale ip -4 "$host")"; then
+              echo "::warning::Could not resolve ${host} via Tailscale"
+              echo "| \`${host}\` | unresolved |" >> "$GITHUB_STEP_SUMMARY"
+              failed=$((failed + 1))
+              echo "::endgroup::"
+              continue
+            fi
+
             if ssh -i ~/.ssh/deploy_key \
               -o ConnectTimeout=10 \
               -o StrictHostKeyChecking=accept-new \
               -o UserKnownHostsFile=~/.ssh/known_hosts \
-              "${DEPLOY_SSH_USER}@${host}" \
+              "${DEPLOY_SSH_USER}@${ip}" \
               "cd ${INSTALL_DIR} && just deploy ${TAG}"; then
-              echo "OK: ${host}"
+              echo "OK: ${host} (${ip})"
               echo "| \`${host}\` | OK |" >> "$GITHUB_STEP_SUMMARY"
               ok=$((ok + 1))
             else
-              echo "::warning::Failed to deploy ${TAG} to ${host}"
+              echo "::warning::Failed to deploy ${TAG} to ${host} (${ip})"
               echo "| \`${host}\` | failed |" >> "$GITHUB_STEP_SUMMARY"
               failed=$((failed + 1))
             fi
