@@ -61,7 +61,25 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.ref }}
-          token: ${{ secrets.WORGARSIDE_DEV_TOKEN }}
+          # Deploy key pushes to main (ruleset bypass). Do not use the
+          # worgarside-dev PAT here — that would either fail rulesets or
+          # require a full bypass that also skips checks on auto-merge.
+          persist-credentials: false
+
+      - name: Configure release deploy key
+        env:
+          SEMANTIC_RELEASE_DEPLOY_KEY: ${{ secrets.SEMANTIC_RELEASE_DEPLOY_KEY }}
+        # yamllint disable rule:line-length
+        run: |
+          # Key must live inside the workspace: the PSR action is Docker-based
+          # and only mounts this directory (runner ~/.ssh is invisible to it).
+          install -m 700 -d .git/ssh
+          printf '%s\n' "$SEMANTIC_RELEASE_DEPLOY_KEY" > .git/ssh/deploy_key
+          chmod 600 .git/ssh/deploy_key
+          ssh-keyscan -t ed25519,rsa github.com > .git/ssh/known_hosts
+          git remote set-url origin "git@github.com:${GITHUB_REPOSITORY}.git"
+          git config --local core.sshCommand "ssh -i ${GITHUB_WORKSPACE}/.git/ssh/deploy_key -o UserKnownHostsFile=${GITHUB_WORKSPACE}/.git/ssh/known_hosts -o IdentitiesOnly=yes"
+        # yamllint enable rule:line-length
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -73,7 +91,9 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: python-semantic-release/python-semantic-release@39dd2052f2ce8282a5d932c31d58a2ca06d2550e # v10.6.1
         with:
-          github_token: ${{ secrets.WORGARSIDE_TOKEN }}
+          # API only (create GitHub Release). Git push uses the deploy key via
+          # ignore_token_for_push in pyproject.toml.
+          github_token: ${{ github.token }}
           git_committer_name: worgarside
           git_committer_email: worgarside@gmail.com
           config_file: pyproject.toml
