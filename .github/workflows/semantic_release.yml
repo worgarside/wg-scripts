@@ -11,6 +11,9 @@ on:
 
   workflow_dispatch:
     inputs:
+      publish-tag:
+        description: The tag to deploy. Will attempt a new release if omitted.
+        required: false
       force-deployment:
         description: >-
           Version component to force, prerelease to increment the prerelease
@@ -35,6 +38,8 @@ env:
 jobs:
   release:
     name: Release
+    # Skip when redeploying an existing tag; do not cut a new release.
+    if: inputs.publish-tag == ''
     environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -74,3 +79,90 @@ jobs:
           config_file: pyproject.toml
           verbosity: 2
           force: ${{ inputs.force-deployment != 'auto' && inputs.force-deployment || '' }}
+
+  deploy:
+    name: Deploy
+    needs: release
+    # always(): release is skipped on publish-tag redeploys; without this,
+    # needs: release would skip deploy too.
+    if: >-
+      always() && !cancelled() &&
+      (needs.release.outputs.released == 'true' || inputs.publish-tag != '')
+    environment: production-deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Connect to Tailscale
+        # yamllint disable-line rule:line-length
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Set up SSH key
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Deploy to Pis
+        env:
+          TAG: ${{ inputs.publish-tag || needs.release.outputs.tag }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          WG_SCRIPTS_HOSTS: ${{ vars.WG_SCRIPTS_HOSTS }}
+        run: |
+          set -uo pipefail
+
+          INSTALL_DIR="/home/${DEPLOY_SSH_USER}/wg-scripts"
+          IFS=',' read -ra HOSTS <<< "${WG_SCRIPTS_HOSTS}"
+
+          ok=0
+          failed=0
+          {
+            echo "## Deploy \`${TAG}\`"
+            echo ""
+            echo "| Host | Result |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for host in "${HOSTS[@]}"; do
+            host="$(echo "$host" | xargs)"
+            if [[ -z "$host" ]]; then
+              continue
+            fi
+
+            echo "::group::Deploy ${TAG} → ${host}"
+            if ssh -i ~/.ssh/deploy_key \
+              -o ConnectTimeout=10 \
+              -o StrictHostKeyChecking=accept-new \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              "${DEPLOY_SSH_USER}@${host}" \
+              "cd ${INSTALL_DIR} && just deploy ${TAG}"; then
+              echo "OK: ${host}"
+              echo "| \`${host}\` | OK |" >> "$GITHUB_STEP_SUMMARY"
+              ok=$((ok + 1))
+            else
+              echo "::warning::Failed to deploy ${TAG} to ${host}"
+              echo "| \`${host}\` | failed |" >> "$GITHUB_STEP_SUMMARY"
+              failed=$((failed + 1))
+            fi
+            echo "::endgroup::"
+          done
+
+          {
+            echo ""
+            echo "Succeeded: ${ok} / $((ok + failed))"
+            echo "Failed: ${failed} / $((ok + failed))"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Soft-fail only partial failures: one unreachable Pi must not fail
+          # the release deploy. But if every host failed, that is systemic
+          # (bad key, Tailscale, missing tag) and must surface.
+          if [[ "$ok" -eq 0 && "$failed" -gt 0 ]]; then
+            echo "::error::All ${failed} host(s) failed to deploy ${TAG}"
+            exit 1
+          fi
+          exit 0
