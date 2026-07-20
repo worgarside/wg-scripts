@@ -57,7 +57,7 @@ just setup-deploy-key ./wg-scripts-deploy.pub
 
 `setup-deploy-key` accepts a `.pub` file path or the key line itself (same key on
 every Pi; CI uses one `DEPLOY_SSH_PRIVATE_KEY`). Keep the repo at
-`/home/pi/wg-scripts` with `just` / `uv` / `git`, and allow `tag:ci` to SSH
+`/home/<user>/wg-scripts` with `just` / `uv` / `git`, and allow `tag:ci` to SSH
 these nodes in the Tailscale ACL (same client as backplane CI).
 
 ### `production-deploy` environment
@@ -67,6 +67,6 @@ these nodes in the Tailscale ACL (same client as backplane CI).
 | Var | `TS_OAUTH_CLIENT_ID` | Tailscale OAuth client ID (`tag:ci`) |
 | Secret | `TS_OAUTH_SECRET` | Matching OAuth client secret |
 | Secret | `DEPLOY_SSH_PRIVATE_KEY` | Private key matching the shared deploy key on each Pi |
-| Var | `DEPLOY_SSH_USER` | `pi` (install path `/home/pi/wg-scripts`) |
-| Var | `WG_SCRIPTS_HOSTS` | Comma-separated MagicDNS hostnames (used when `WG_SCRIPTS_TS_TAG` is unset) |
+| Var | `DEPLOY_SSH_USER` | Default SSH user when a host has no `user@` prefix |
+| Var | `WG_SCRIPTS_HOSTS` | Comma-separated hosts, optional `user@host` (e.g. `pi@host-a,deploy@host-b`) |
 | Var | `WG_SCRIPTS_TS_TAG` | Optional. If set (e.g. `tag:pi`), discover online Tailscale peers with this tag instead of `WG_SCRIPTS_HOSTS` |

@@ -134,6 +134,7 @@ jobs:
       - name: Deploy to Pis
         env:
           TAG: ${{ inputs.publish-tag || needs.release.outputs.tag }}
+          # Default SSH user when a host entry has no user@ prefix.
           DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
           WG_SCRIPTS_HOSTS: ${{ vars.WG_SCRIPTS_HOSTS }}
           # Optional: e.g. tag:pi — when set, discover online peers with this
@@ -141,8 +142,6 @@ jobs:
           WG_SCRIPTS_TS_TAG: ${{ vars.WG_SCRIPTS_TS_TAG }}
         run: |
           set -uo pipefail
-
-          INSTALL_DIR="/home/${DEPLOY_SSH_USER}/wg-scripts"
 
           if [[ -n "${WG_SCRIPTS_TS_TAG:-}" ]]; then
             echo "Discovering hosts with Tailscale tag ${WG_SCRIPTS_TS_TAG}"
@@ -168,22 +167,38 @@ jobs:
           {
             echo "## Deploy \`${TAG}\`"
             echo ""
-            echo "| Host | Result |"
-            echo "| --- | --- |"
+            echo "| Host | User | Result |"
+            echo "| --- | --- | --- |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-          for host in "${HOSTS[@]}"; do
-            host="$(echo "$host" | xargs)"
-            if [[ -z "$host" ]]; then
+          for entry in "${HOSTS[@]}"; do
+            entry="$(echo "$entry" | xargs)"
+            if [[ -z "$entry" ]]; then
               continue
             fi
 
-            echo "::group::Deploy ${TAG} → ${host}"
+            if [[ "$entry" == *@* ]]; then
+              user="${entry%%@*}"
+              host="${entry#*@}"
+            else
+              user="${DEPLOY_SSH_USER}"
+              host="$entry"
+            fi
+
+            if [[ -z "$user" || -z "$host" ]]; then
+              echo "::warning::Invalid host entry: ${entry}"
+              failed=$((failed + 1))
+              continue
+            fi
+
+            install_dir="/home/${user}/wg-scripts"
+
+            echo "::group::Deploy ${TAG} → ${user}@${host}"
             # GHA runners often cannot resolve MagicDNS short names via system
             # DNS; ask Tailscale's netmap for the 100.x address instead.
             if ! ip="$(tailscale ip -4 "$host")"; then
               echo "::warning::Could not resolve ${host} via Tailscale"
-              echo "| \`${host}\` | unresolved |" >> "$GITHUB_STEP_SUMMARY"
+              echo "| \`${host}\` | \`${user}\` | unresolved |" >> "$GITHUB_STEP_SUMMARY"
               failed=$((failed + 1))
               echo "::endgroup::"
               continue
@@ -193,14 +208,14 @@ jobs:
               -o ConnectTimeout=10 \
               -o StrictHostKeyChecking=accept-new \
               -o UserKnownHostsFile=~/.ssh/known_hosts \
-              "${DEPLOY_SSH_USER}@${ip}" \
-              "cd ${INSTALL_DIR} && just deploy ${TAG}"; then
-              echo "OK: ${host} (${ip})"
-              echo "| \`${host}\` | OK |" >> "$GITHUB_STEP_SUMMARY"
+              "${user}@${ip}" \
+              "cd ${install_dir} && just deploy ${TAG}"; then
+              echo "OK: ${user}@${host} (${ip})"
+              echo "| \`${host}\` | \`${user}\` | OK |" >> "$GITHUB_STEP_SUMMARY"
               ok=$((ok + 1))
             else
-              echo "::warning::Failed to deploy ${TAG} to ${host} (${ip})"
-              echo "| \`${host}\` | failed |" >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning::Failed to deploy ${TAG} to ${user}@${host} (${ip})"
+              echo "| \`${host}\` | \`${user}\` | failed |" >> "$GITHUB_STEP_SUMMARY"
               failed=$((failed + 1))
             fi
             echo "::endgroup::"

@@ -159,7 +159,7 @@ update:
     just restart-all
 
 # Install Tailscale (if needed) and join the tailnet using this host's short
-# hostname (crtpi, growpi, …). Create a reusable auth key at
+# MagicDNS hostname. Create a reusable auth key at
 # https://login.tailscale.com/admin/settings/keys then:
 #   just setup-tailscale tskey-auth-XXXX
 setup-tailscale auth_key:
