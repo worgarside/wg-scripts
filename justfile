@@ -1,5 +1,9 @@
 set dotenv-load
 
+# Non-interactive SSH (CI deploy) often lacks login-shell PATH; uv commonly
+# lives in ~/.local/bin or ~/.cargo/bin.
+export PATH := `printf '%s/.local/bin:%s/.cargo/bin:%s' "$HOME" "$HOME" "$PATH"`
+
 # List available recipes
 default:
     @just --list

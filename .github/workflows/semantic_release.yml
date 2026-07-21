@@ -209,7 +209,7 @@ jobs:
               -o StrictHostKeyChecking=accept-new \
               -o UserKnownHostsFile=~/.ssh/known_hosts \
               "${user}@${ip}" \
-              "cd ${install_dir} && just deploy ${TAG}"; then
+              "bash -lc 'cd ${install_dir} && just deploy ${TAG}'"; then
               echo "OK: ${user}@${host} (${ip})"
               echo "| \`${host}\` | \`${user}\` | OK |" >> "$GITHUB_STEP_SUMMARY"
               ok=$((ok + 1))
