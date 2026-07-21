@@ -263,7 +263,10 @@ def _probe_smart_device(
     name: str,
     preferred_transport: str | None = None,
 ) -> tuple[str, dict[str, object]] | None:
-    """Probe a device with preferred then fallback transports until SMART answers."""
+    """Probe a device with preferred then fallback transports until SMART answers.
+
+    Uses ``-i -H`` so identity (model name) is available alongside health.
+    """
     transports: list[str] = []
     if preferred_transport:
         transports.append(preferred_transport)
@@ -277,11 +280,96 @@ def _probe_smart_device(
         if transport in tried:
             continue
         tried.add(transport)
-        probe = _run_smartctl("-d", transport, "-H", "-j", name)
+        probe = _run_smartctl("-d", transport, "-i", "-H", "-j", name)
         if probe is not None and "smart_status" in probe:
             return transport, probe
 
     return None
+
+
+def _smart_label(probe: dict[str, object], device: str) -> str:
+    """Best-effort friendly disk name from smartctl identity fields."""
+    for key in ("model_name", "scsi_model_name"):
+        value = probe.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return device
+
+
+def _disambiguate_smart_labels(devices: list[SmartDevice]) -> list[SmartDevice]:
+    """Append the device basename when multiple disks share a model label."""
+    label_counts: dict[str, int] = {}
+    for device in devices:
+        label_counts[device.label] = label_counts.get(device.label, 0) + 1
+
+    if all(count == 1 for count in label_counts.values()):
+        return devices
+
+    return [
+        SmartDevice(
+            device=device.device,
+            transport=device.transport,
+            kind=device.kind,
+            slug=device.slug,
+            label=(
+                device.label
+                if label_counts[device.label] == 1
+                else f"{device.label} ({Path(device.device).name})"
+            ),
+        )
+        for device in devices
+    ]
+
+
+def _scan_open_candidates() -> list[tuple[str, str | None]] | None:
+    """Return ``(device, transport)`` pairs from ``smartctl --scan-open``.
+
+    Returns ``None`` when smartctl cannot be invoked; an empty list when it can
+    but found no devices.
+    """
+    scan = _run_smartctl("--scan-open", "-j")
+    if scan is None:
+        return None
+
+    candidates: list[tuple[str, str | None]] = []
+    seen_names: set[str] = set()
+    raw_devices = scan.get("devices")
+    if not isinstance(raw_devices, list):
+        return candidates
+
+    for entry in raw_devices:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        transport = entry.get("type")
+        if not isinstance(name, str) or not isinstance(transport, str):
+            continue
+        if name in seen_names:
+            continue
+        seen_names.add(name)
+        candidates.append((name, transport))
+
+    return candidates
+
+
+def _smart_candidates() -> list[tuple[str, str | None]] | None:
+    """Merge scan-open and ``/sys/block`` candidates.
+
+    Returns ``None`` when smartctl cannot be invoked at all.
+    """
+    scan_candidates = _scan_open_candidates()
+    if scan_candidates is None:
+        return None
+
+    candidates = list(scan_candidates)
+    seen_names = {name for name, _transport in candidates}
+    for name in _block_device_candidates():
+        if name in seen_names:
+            continue
+        seen_names.add(name)
+        candidates.append((name, None))
+
+    return candidates
 
 
 @lru_cache(maxsize=1)
@@ -293,32 +381,9 @@ def find_smart_devices() -> tuple[SmartDevice, ...]:
     common transports. Returns an empty tuple when smartctl is missing, sudo is
     denied, or nothing answers a health probe (e.g. SD-only Pis).
     """
-    scan = _run_smartctl("--scan-open", "-j")
-    if scan is None:
+    candidates = _smart_candidates()
+    if candidates is None:
         return ()
-
-    candidates: list[tuple[str, str | None]] = []
-    seen_names: set[str] = set()
-
-    raw_devices = scan.get("devices")
-    if isinstance(raw_devices, list):
-        for entry in raw_devices:
-            if not isinstance(entry, dict):
-                continue
-            name = entry.get("name")
-            transport = entry.get("type")
-            if not isinstance(name, str) or not isinstance(transport, str):
-                continue
-            if name in seen_names:
-                continue
-            seen_names.add(name)
-            candidates.append((name, transport))
-
-    for name in _block_device_candidates():
-        if name in seen_names:
-            continue
-        seen_names.add(name)
-        candidates.append((name, None))
 
     detected: list[SmartDevice] = []
     seen_slugs: set[str] = set()
@@ -346,14 +411,17 @@ def find_smart_devices() -> tuple[SmartDevice, ...]:
                 transport=transport,
                 kind=kind,
                 slug=slug,
+                label=_smart_label(probe, name),
             ),
         )
+
+    detected = _disambiguate_smart_labels(detected)
 
     if detected:
         LOGGER.info(
             "Detected SMART devices: %s",
             ", ".join(
-                f"{device.device} ({device.kind}/{device.transport})"
+                f"{device.label} [{device.device} {device.kind}/{device.transport}]"
                 for device in detected
             ),
         )

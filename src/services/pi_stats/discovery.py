@@ -28,6 +28,7 @@ class SmartDevice:
     transport: str
     kind: SmartKind
     slug: str
+    label: str
 
 
 def path_to_slug(path: str) -> str:
@@ -333,12 +334,13 @@ def _smart_components(
     for device in devices:
         jinja_slug = device.slug.replace("\\", "\\\\").replace("'", "\\'")
         smart_path = f"value_json.smart['{jinja_slug}']"
+        label = device.label
 
         health_metric = f"smart_{device.slug}_health"
         components[f"{hostname}_{health_metric}"] = _binary_sensor_component(
             hostname=hostname,
             metric=health_metric,
-            name=f"SMART Health ({device.device})",
+            name=f"SMART Health ({label})",
             value_template=f"{{{{ {smart_path}.health }}}}",
             icon="mdi:harddisk-plus",
             force_update=True,
@@ -351,7 +353,7 @@ def _smart_components(
         components[f"{hostname}_{temperature_metric}"] = _sensor_component(
             hostname=hostname,
             metric=temperature_metric,
-            name=f"SMART Temperature ({device.device})",
+            name=f"SMART Temperature ({label})",
             value_template=f"{{{{ {smart_path}.temperature }}}}",
             icon="mdi:thermometer",
             force_update=True,
@@ -365,7 +367,7 @@ def _smart_components(
             components[f"{hostname}_{wear_metric}"] = _sensor_component(
                 hostname=hostname,
                 metric=wear_metric,
-                name=f"SSD Wear ({device.device})",
+                name=f"SSD Wear ({label})",
                 value_template=f"{{{{ {smart_path}.percentage_used }}}}",
                 icon="mdi:battery-heart-variant",
                 force_update=True,
@@ -377,7 +379,7 @@ def _smart_components(
             components[f"{hostname}_{wear_metric}"] = _sensor_component(
                 hostname=hostname,
                 metric=wear_metric,
-                name=f"Reallocated Sectors ({device.device})",
+                name=f"Reallocated Sectors ({label})",
                 value_template=f"{{{{ {smart_path}.reallocated_sectors }}}}",
                 icon="mdi:harddisk-remove",
                 force_update=True,

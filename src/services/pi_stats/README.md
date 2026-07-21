@@ -113,14 +113,17 @@ Disk entity IDs use path slugs:
 | `/home` | `sensor.<hostname>_disk_usage_home` |
 | `/mnt/storage` | `sensor.<hostname>_disk_usage_mnt_storage` |
 
-SMART entity IDs use device-path slugs (`/dev/sda` → `dev_sda`):
+SMART entity IDs use device-path slugs (`/dev/sda` → `dev_sda`) for stability.
+Friendly names come from smartctl `model_name` (for example
+`Samsung SSD 850 EVO 500GB`); identical models are disambiguated with the
+device basename.
 
-| Metric | Entity ID |
-|--------|-----------|
-| Health | `binary_sensor.<hostname>_smart_dev_sda_health` |
-| Temperature | `sensor.<hostname>_smart_dev_sda_temperature` |
-| Reallocated sectors (ATA) | `sensor.<hostname>_smart_dev_sda_reallocated_sectors` |
-| SSD wear (NVMe) | `sensor.<hostname>_smart_dev_nvme0_percentage_used` |
+| Metric | Entity ID | Example name |
+|--------|-----------|--------------|
+| Health | `binary_sensor.<hostname>_smart_dev_sda_health` | SMART Health (Samsung SSD 850 EVO 500GB) |
+| Temperature | `sensor.<hostname>_smart_dev_sda_temperature` | SMART Temperature (Samsung SSD 850 EVO 500GB) |
+| Reallocated sectors (ATA) | `sensor.<hostname>_smart_dev_sda_reallocated_sectors` | Reallocated Sectors (Samsung SSD 850 EVO 500GB) |
+| SSD wear (NVMe) | `sensor.<hostname>_smart_dev_nvme0_percentage_used` | SSD Wear (SSD98-2563CG-PB) |
 
 Health uses `device_class: problem` (`on` = `FAILED`). Duplicate normalized path
 slugs are rejected at startup.
