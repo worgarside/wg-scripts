@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v2.2.0 (2026-07-21)
+
+### Features
+
+- Add SMART disk monitoring with sudo setup
+  ([#396](https://github.com/worgarside/wg-scripts/pull/396),
+  [`dfc9442`](https://github.com/worgarside/wg-scripts/commit/dfc9442fedd97d9997b0b9e9654676065e33736e))
+
+
 ## v2.1.4 (2026-07-21)
 
 ### Continuous Integration
