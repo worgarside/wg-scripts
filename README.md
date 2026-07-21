@@ -24,7 +24,8 @@ just setup              # sync all dependency groups
 just run mqtt_gpio      # run a service locally
 just sync               # runtime deps only (Pi deploy)
 just update             # switch to main, ff-only pull, sync, restart
-just deploy 1.3.1       # dirty-check, checkout tag (detached), sync, restart
+just deploy 1.3.1          # dirty-check, checkout tag/branch (detached), sync, restart
+just deploy feature/smart  # same for a remote branch tip
 just setup-tailscale KEY  # install Tailscale and join the tailnet
 just setup-deploy-key FILE_OR_LINE  # install CI deploy SSH public key
 ```

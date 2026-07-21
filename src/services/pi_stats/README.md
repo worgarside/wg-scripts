@@ -44,6 +44,53 @@ payload also includes:
 These keys are omitted entirely on hosts without `pwmfan` (and for a sample if the
 sysfs read fails).
 
+### SMART disks (optional)
+
+When `smartctl` can enumerate and probe SMART-capable disks (NVMe / SATA SSD /
+HDD — not SD cards), the payload includes a nested `smart` map keyed by device
+slug:
+
+```json
+{
+  "smart": {
+    "dev_sda": {
+      "health": "PASSED",
+      "temperature": 38,
+      "reallocated_sectors": 0
+    },
+    "dev_nvme0": {
+      "health": "PASSED",
+      "temperature": 41,
+      "percentage_used": 2
+    }
+  }
+}
+```
+
+| Key | Disks | Meaning |
+|-----|-------|---------|
+| `health` | All | `PASSED` / `FAILED` from SMART overall-health |
+| `temperature` | All (when reported) | Drive temperature in °C |
+| `reallocated_sectors` | ATA/SATA | Max of attributes 5 and 197 (reallocated / pending) |
+| `percentage_used` | NVMe | SSD wear estimate from the NVMe health log |
+
+SMART is sampled every five minutes (not every stats cycle). The entire `smart`
+key is omitted on SD-only hosts, when `smartmontools` is missing, or when the
+service user cannot run `smartctl` via sudo.
+
+Detection uses `smartctl --scan-open` plus a `/sys/block` fallback that probes
+common USB-SATA transports (`sat`, …). That covers bridges smartctl does not
+auto-detect (for example JMicron `0x152d:0xa578` on vaultpi).
+
+#### Enabling SMART on a Pi
+
+1. Install tools: `sudo apt install smartmontools`
+2. Grant the service user passwordless `smartctl`: `just setup-smart`
+3. Restart the service: `just restart pi_stats`
+
+`setup-smart` installs `/etc/sudoers.d/pi_stats-smartctl` (validated with
+`visudo`) so the non-root service can run `sudo -n /usr/sbin/smartctl`.
+
 ## MQTT Discovery
 
 On connect, `pi_stats` publishes a retained device-discovery payload to:
@@ -56,6 +103,7 @@ That creates one Home Assistant device containing:
   `sensor.<hostname>_wg_scripts_version`, etc.)
 - One disk-usage sensor per `DISK_USAGE_PATHS` entry
 - Fan Speed / Fan PWM sensors when `pwmfan` hwmon is detected at startup
+- Per SMART disk (when detected): health binary sensor, temperature, and wear
 
 Disk entity IDs use path slugs:
 
@@ -65,11 +113,25 @@ Disk entity IDs use path slugs:
 | `/home` | `sensor.<hostname>_disk_usage_home` |
 | `/mnt/storage` | `sensor.<hostname>_disk_usage_mnt_storage` |
 
-Duplicate normalized path slugs are rejected at startup.
+SMART entity IDs use device-path slugs (`/dev/sda` → `dev_sda`) for stability.
+Friendly names come from smartctl `model_name` (for example
+`Samsung SSD 850 EVO 500GB`); identical models are disambiguated with the
+device basename.
+
+| Metric | Entity ID | Example name |
+|--------|-----------|--------------|
+| Health | `binary_sensor.<hostname>_smart_dev_sda_health` | SMART Health (Samsung SSD 850 EVO 500GB) |
+| Temperature | `sensor.<hostname>_smart_dev_sda_temperature` | SMART Temperature (Samsung SSD 850 EVO 500GB) |
+| Reallocated sectors (ATA) | `sensor.<hostname>_smart_dev_sda_reallocated_sectors` | Reallocated Sectors (Samsung SSD 850 EVO 500GB) |
+| SSD wear (NVMe) | `sensor.<hostname>_smart_dev_nvme0_percentage_used` | SSD Wear (SSD98-2563CG-PB) |
+
+Health uses `device_class: problem` (`on` = `FAILED`). Duplicate normalized path
+slugs are rejected at startup.
 
 Discovery is republished after every MQTT connection and reconnection. Previously
-published component IDs are stored locally so removing a disk path first publishes
-the Home Assistant removal tombstone, then the clean discovery payload.
+published component IDs (and platforms) are stored locally so removing a disk path
+or SMART device first publishes the Home Assistant removal tombstone, then the
+clean discovery payload.
 
 ## Availability
 
