@@ -78,6 +78,10 @@ SMART is sampled every five minutes (not every stats cycle). The entire `smart`
 key is omitted on SD-only hosts, when `smartmontools` is missing, or when the
 service user cannot run `smartctl` via sudo.
 
+Detection uses `smartctl --scan-open` plus a `/sys/block` fallback that probes
+common USB-SATA transports (`sat`, …). That covers bridges smartctl does not
+auto-detect (for example JMicron `0x152d:0xa578` on vaultpi).
+
 #### Enabling SMART on a Pi
 
 1. Install tools: `sudo apt install smartmontools`

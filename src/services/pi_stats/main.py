@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import socket
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -53,6 +54,17 @@ HWMON_ROOT: Final = Path("/sys/class/hwmon")
 PWM_MAX_DUTY: Final = 255
 SMARTCTL: Final = "/usr/sbin/smartctl"
 ATA_WEAR_ATTRIBUTE_IDS: Final = frozenset({5, 197})
+# Prefer sat first: common for USB-SATA bridges that smartctl --scan-open skips
+# (e.g. JMicron 0x152d:0xa578 on vaultpi).
+SMART_TRANSPORT_FALLBACKS: Final = (
+    "sat",
+    "sat,12",
+    "sat,16",
+    "scsi",
+    "usbjmicron",
+    "auto",
+)
+NVME_NAMESPACE: Final = re.compile(r"^(nvme\d+)n\d+$")
 
 SERVICE_START_TIME: Final = datetime.now(UTC).isoformat()
 
@@ -218,37 +230,105 @@ def _smart_kind(device: str, transport: str, probe: dict[str, object]) -> SmartK
     return "ata"
 
 
+def _block_device_candidates() -> tuple[str, ...]:
+    """Return whole-disk device nodes that may support SMART.
+
+    Skips loop/zram/ram/dm/md and mmc (SD/eMMC). NVMe namespaces are mapped to
+    the controller node (``/dev/nvme0n1`` → ``/dev/nvme0``) to match smartctl
+    ``--scan-open``.
+    """
+    sys_block = Path("/sys/block")
+    if not sys_block.is_dir():
+        return ()
+
+    devices: list[str] = []
+    seen: set[str] = set()
+
+    for entry in sorted(sys_block.iterdir()):
+        name = entry.name
+        if name.startswith(("loop", "ram", "zram", "dm-", "md", "mmcblk")):
+            continue
+
+        nvme_match = NVME_NAMESPACE.fullmatch(name)
+        device = f"/dev/{nvme_match.group(1)}" if nvme_match else f"/dev/{name}"
+        if device in seen or not Path(device).exists():
+            continue
+        seen.add(device)
+        devices.append(device)
+
+    return tuple(devices)
+
+
+def _probe_smart_device(
+    name: str,
+    preferred_transport: str | None = None,
+) -> tuple[str, dict[str, object]] | None:
+    """Probe a device with preferred then fallback transports until SMART answers."""
+    transports: list[str] = []
+    if preferred_transport:
+        transports.append(preferred_transport)
+    if "nvme" in name.casefold():
+        transports.append("nvme")
+    else:
+        transports.extend(SMART_TRANSPORT_FALLBACKS)
+
+    tried: set[str] = set()
+    for transport in transports:
+        if transport in tried:
+            continue
+        tried.add(transport)
+        probe = _run_smartctl("-d", transport, "-H", "-j", name)
+        if probe is not None and "smart_status" in probe:
+            return transport, probe
+
+    return None
+
+
 @lru_cache(maxsize=1)
 def find_smart_devices() -> tuple[SmartDevice, ...]:
-    """Detect SMART-capable disks via ``smartctl --scan-open``.
+    """Detect SMART-capable disks via scan-open plus block-device fallbacks.
 
-    Returns an empty tuple when smartctl is missing, sudo is denied, the host is
-    SD-only, or no scanned device answers a health probe.
+    ``smartctl --scan-open`` misses some USB-SATA bridges (unknown VID:PID). For
+    those, whole disks from ``/sys/block`` are probed with ``-d sat`` and other
+    common transports. Returns an empty tuple when smartctl is missing, sudo is
+    denied, or nothing answers a health probe (e.g. SD-only Pis).
     """
     scan = _run_smartctl("--scan-open", "-j")
     if scan is None:
         return ()
 
+    candidates: list[tuple[str, str | None]] = []
+    seen_names: set[str] = set()
+
     raw_devices = scan.get("devices")
-    if not isinstance(raw_devices, list):
-        return ()
+    if isinstance(raw_devices, list):
+        for entry in raw_devices:
+            if not isinstance(entry, dict):
+                continue
+            name = entry.get("name")
+            transport = entry.get("type")
+            if not isinstance(name, str) or not isinstance(transport, str):
+                continue
+            if name in seen_names:
+                continue
+            seen_names.add(name)
+            candidates.append((name, transport))
+
+    for name in _block_device_candidates():
+        if name in seen_names:
+            continue
+        seen_names.add(name)
+        candidates.append((name, None))
 
     detected: list[SmartDevice] = []
     seen_slugs: set[str] = set()
 
-    for entry in raw_devices:
-        if not isinstance(entry, dict):
+    for name, preferred_transport in candidates:
+        probed = _probe_smart_device(name, preferred_transport)
+        if probed is None:
             continue
 
-        name = entry.get("name")
-        transport = entry.get("type")
-        if not isinstance(name, str) or not isinstance(transport, str):
-            continue
-
-        probe = _run_smartctl("-d", transport, "-H", "-j", name)
-        if probe is None or "smart_status" not in probe:
-            continue
-
+        transport, probe = probed
         kind = _smart_kind(name, transport, probe)
         slug = path_to_slug(name)
         if slug in seen_slugs:
