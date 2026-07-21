@@ -7,9 +7,10 @@ from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
-from json import dumps
+from json import JSONDecodeError, dumps, loads
 from os import getenv, getloadavg
 from pathlib import Path
+from subprocess import run  # noqa: S404
 from threading import Event
 from time import sleep, time
 from typing import TYPE_CHECKING, ClassVar, Final, NotRequired, TypedDict
@@ -23,12 +24,15 @@ from wg_utilities.utils import mqtt
 from services.pi_stats.discovery import (
     PAYLOAD_OFFLINE,
     PAYLOAD_ONLINE,
+    SmartDevice,
+    SmartKind,
     availability_topic,
     build_discovery_updates,
     discovery_topic,
     disk_path_slugs,
-    load_component_ids,
-    save_component_ids,
+    load_component_platforms,
+    path_to_slug,
+    save_component_platforms,
     stats_topic,
 )
 from wg_scripts import __version__
@@ -47,6 +51,8 @@ IP_FALLBACK: Final = f"{mqtt.HOSTNAME}.local"
 ONE_MINUTE: Final = 60
 HWMON_ROOT: Final = Path("/sys/class/hwmon")
 PWM_MAX_DUTY: Final = 255
+SMARTCTL: Final = "/usr/sbin/smartctl"
+ATA_WEAR_ATTRIBUTE_IDS: Final = frozenset({5, 197})
 
 SERVICE_START_TIME: Final = datetime.now(UTC).isoformat()
 
@@ -70,6 +76,16 @@ PUBLISH_TIMEOUT_SECONDS: Final = 5
 # the Paho network loop.
 _DISCOVERY_NEEDED: Final = Event()
 _FAN_READ_ERRORS_LOGGED: Final[set[str]] = set()
+_SMART_READ_ERRORS_LOGGED: Final[set[str]] = set()
+
+
+class SmartDeviceStats(TypedDict):
+    """Per-disk SMART sample included under ``Stats.smart``."""
+
+    health: str
+    temperature: NotRequired[float]
+    reallocated_sectors: NotRequired[int]
+    percentage_used: NotRequired[int]
 
 
 class Stats(TypedDict):
@@ -91,6 +107,7 @@ class Stats(TypedDict):
     wg_scripts_version: str
     fan_speed_rpm: NotRequired[int]
     fan_pwm_percent: NotRequired[float]
+    smart: NotRequired[dict[str, SmartDeviceStats]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,6 +166,263 @@ def read_fan_stats() -> tuple[int, float] | None:
     return rpm, float(round(pwm_raw / PWM_MAX_DUTY * 100, 1))
 
 
+def _run_smartctl(*args: str) -> dict[str, object] | None:
+    """Run ``sudo -n smartctl`` with JSON output, returning parsed stdout.
+
+    ``smartctl`` uses a bitmask exit status even on successful reads, so non-zero
+    exits are ignored when valid JSON is returned. Missing binary, sudo denial,
+    or unparsable output all yield ``None`` without treating the exit code as fatal.
+    """
+    cmd = ["sudo", "-n", SMARTCTL, *args]
+    try:
+        completed = run(  # noqa: S603
+            cmd,
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    except FileNotFoundError, PermissionError:
+        LOGGER.debug("smartctl unavailable (%s)", SMARTCTL)
+        return None
+    except OSError:
+        LOGGER.exception("Failed to invoke smartctl")
+        return None
+
+    output = completed.stdout.strip()
+    if not output:
+        error = completed.stderr.strip()
+        if error:
+            LOGGER.debug("smartctl produced no output: %s", error)
+        return None
+
+    try:
+        payload = loads(output)
+    except JSONDecodeError:
+        LOGGER.debug("smartctl returned non-JSON output: %s", output[:200])
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    return payload
+
+
+def _smart_kind(device: str, transport: str, probe: dict[str, object]) -> SmartKind:
+    """Classify a SMART device as ATA or NVMe from probe data / transport."""
+    if "nvme_smart_health_information_log" in probe:
+        return "nvme"
+    if "ata_smart_attributes" in probe:
+        return "ata"
+    if "nvme" in transport.casefold() or "nvme" in device.casefold():
+        return "nvme"
+    return "ata"
+
+
+@lru_cache(maxsize=1)
+def find_smart_devices() -> tuple[SmartDevice, ...]:
+    """Detect SMART-capable disks via ``smartctl --scan-open``.
+
+    Returns an empty tuple when smartctl is missing, sudo is denied, the host is
+    SD-only, or no scanned device answers a health probe.
+    """
+    scan = _run_smartctl("--scan-open", "-j")
+    if scan is None:
+        return ()
+
+    raw_devices = scan.get("devices")
+    if not isinstance(raw_devices, list):
+        return ()
+
+    detected: list[SmartDevice] = []
+    seen_slugs: set[str] = set()
+
+    for entry in raw_devices:
+        if not isinstance(entry, dict):
+            continue
+
+        name = entry.get("name")
+        transport = entry.get("type")
+        if not isinstance(name, str) or not isinstance(transport, str):
+            continue
+
+        probe = _run_smartctl("-d", transport, "-H", "-j", name)
+        if probe is None or "smart_status" not in probe:
+            continue
+
+        kind = _smart_kind(name, transport, probe)
+        slug = path_to_slug(name)
+        if slug in seen_slugs:
+            LOGGER.warning(
+                "Skipping SMART device %s due to slug collision on %r",
+                name,
+                slug,
+            )
+            continue
+
+        seen_slugs.add(slug)
+        detected.append(
+            SmartDevice(
+                device=name,
+                transport=transport,
+                kind=kind,
+                slug=slug,
+            ),
+        )
+
+    if detected:
+        LOGGER.info(
+            "Detected SMART devices: %s",
+            ", ".join(
+                f"{device.device} ({device.kind}/{device.transport})"
+                for device in detected
+            ),
+        )
+
+    return tuple(detected)
+
+
+def _ata_wear_sectors(probe: dict[str, object]) -> int | None:
+    """Return max(reallocated, pending) from ATA attributes 5 and 197."""
+    attributes = probe.get("ata_smart_attributes")
+    if not isinstance(attributes, dict):
+        return None
+
+    table = attributes.get("table")
+    if not isinstance(table, list):
+        return None
+
+    candidates: list[int] = []
+    for row in table:
+        if not isinstance(row, dict):
+            continue
+        attr_id = row.get("id")
+        if attr_id not in ATA_WEAR_ATTRIBUTE_IDS:
+            continue
+        raw = row.get("raw")
+        if not isinstance(raw, dict):
+            continue
+        value = raw.get("value")
+        if isinstance(value, bool) or not isinstance(value, int):
+            continue
+        candidates.append(value)
+
+    return max(candidates) if candidates else None
+
+
+def _as_float(value: object) -> float | None:
+    """Coerce a JSON number to float, rejecting bools."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return float(value)
+
+
+def _as_int(value: object) -> int | None:
+    """Coerce a JSON number to int, rejecting bools."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    return None
+
+
+def _probe_temperature(probe: dict[str, object]) -> float | None:
+    """Read ``temperature.current`` from a smartctl JSON probe."""
+    temperature = probe.get("temperature")
+    if not isinstance(temperature, dict):
+        return None
+    return _as_float(temperature.get("current"))
+
+
+def _nvme_percentage_used(probe: dict[str, object]) -> int | None:
+    """Read NVMe ``percentage_used`` from a smartctl JSON probe."""
+    nvme_log = probe.get("nvme_smart_health_information_log")
+    if not isinstance(nvme_log, dict):
+        return None
+    return _as_int(nvme_log.get("percentage_used"))
+
+
+def _parse_smart_device_stats(
+    device: SmartDevice,
+    probe: dict[str, object],
+) -> SmartDeviceStats | None:
+    """Extract the curated SMART fields for one device sample."""
+    smart_status = probe.get("smart_status")
+    if not isinstance(smart_status, dict) or "passed" not in smart_status:
+        return None
+
+    passed = smart_status.get("passed")
+    if not isinstance(passed, bool):
+        return None
+
+    stats: SmartDeviceStats = {
+        "health": "PASSED" if passed else "FAILED",
+    }
+
+    if (temperature := _probe_temperature(probe)) is not None:
+        stats["temperature"] = temperature
+
+    if device.kind == "nvme":
+        if (percentage_used := _nvme_percentage_used(probe)) is not None:
+            stats["percentage_used"] = percentage_used
+    elif (wear := _ata_wear_sectors(probe)) is not None:
+        stats["reallocated_sectors"] = wear
+
+    return stats
+
+
+def read_smart_stats(
+    devices: tuple[SmartDevice, ...] | None = None,
+) -> dict[str, SmartDeviceStats]:
+    """Read curated SMART stats for each detected (or provided) device.
+
+    Devices that fail for a sample are omitted; the first failure of each type is
+    logged, matching the pwmfan error-dedupe pattern.
+    """
+    targets = find_smart_devices() if devices is None else devices
+    results: dict[str, SmartDeviceStats] = {}
+
+    for device in targets:
+        try:
+            probe = _run_smartctl(
+                "-d",
+                device.transport,
+                "-A",
+                "-H",
+                "-j",
+                device.device,
+            )
+        except Exception as exc:
+            error_key = f"{device.device}:{type(exc).__name__}"
+            if error_key not in _SMART_READ_ERRORS_LOGGED:
+                _SMART_READ_ERRORS_LOGGED.add(error_key)
+                LOGGER.exception("Failed to read SMART stats for %s", device.device)
+            continue
+
+        if probe is None:
+            error_key = f"{device.device}:NoOutput"
+            if error_key not in _SMART_READ_ERRORS_LOGGED:
+                _SMART_READ_ERRORS_LOGGED.add(error_key)
+                LOGGER.warning("SMART read for %s returned no usable JSON", device.device)
+            continue
+
+        parsed = _parse_smart_device_stats(device, probe)
+        if parsed is None:
+            error_key = f"{device.device}:MissingStatus"
+            if error_key not in _SMART_READ_ERRORS_LOGGED:
+                _SMART_READ_ERRORS_LOGGED.add(error_key)
+                LOGGER.warning(
+                    "SMART probe for %s missing smart_status.passed",
+                    device.device,
+                )
+            continue
+
+        results[device.slug] = parsed
+
+    return results
+
+
 @lru_cache(maxsize=1)
 def local_git_ref() -> str:
     """Get the current git ref for the local repo."""
@@ -194,6 +468,7 @@ class RaspberryPi:
     boot_time_iso: str = field(init=False)
 
     get_count: int = 0
+    smart_cache: dict[str, SmartDeviceStats] = field(default_factory=dict)
 
     def get_stats(self) -> Stats:
         """Get the current stats for the Pi.
@@ -212,7 +487,8 @@ class RaspberryPi:
             self.uptime,
         )
 
-        if self.get_count % 5 == 0:
+        refresh_slow = self.get_count % 5 == 0
+        if refresh_slow:
             local_git_ref.cache_clear()
             local_ip.cache_clear()
 
@@ -247,6 +523,12 @@ class RaspberryPi:
             fan_speed_rpm, fan_pwm_percent = fan_stats
             stats["fan_speed_rpm"] = fan_speed_rpm
             stats["fan_pwm_percent"] = fan_pwm_percent
+
+        smart_devices = find_smart_devices()
+        if smart_devices:
+            if refresh_slow or not self.smart_cache:
+                self.smart_cache = read_smart_stats(smart_devices)
+            stats["smart"] = self.smart_cache
 
         return stats
 
@@ -327,12 +609,13 @@ def publish_discovery(client: Client) -> None:
     processed by the network loop, so ``wait_for_publish`` from ``on_connect``
     would deadlock.
     """
-    previous_component_ids = load_component_ids(DISCOVERY_STATE_PATH)
+    previous_component_platforms = load_component_platforms(DISCOVERY_STATE_PATH)
     payloads = build_discovery_updates(
         mqtt.HOSTNAME,
         DISK_USAGE_PATHS,
-        previous_component_ids,
+        previous_component_platforms,
         has_fan=find_pwmfan_hwmon() is not None,
+        smart_devices=find_smart_devices(),
     )
 
     for payload in payloads:
@@ -349,8 +632,11 @@ def publish_discovery(client: Client) -> None:
             )
 
     clean_payload = payloads[-1]
-    component_ids = set(clean_payload["cmps"])
-    save_component_ids(DISCOVERY_STATE_PATH, component_ids)
+    component_platforms = {
+        component_id: str(component.get("p", "sensor"))
+        for component_id, component in clean_payload["cmps"].items()
+    }
+    save_component_platforms(DISCOVERY_STATE_PATH, component_platforms)
     LOGGER.info(
         "Published MQTT discovery for %s (%d components, %d updates) to %s",
         mqtt.HOSTNAME,

@@ -86,6 +86,39 @@ setup-service service:
     just enable {{ service }}
     just restart {{ service }}
 
+# Grant passwordless smartctl for pi_stats (requires: sudo apt install smartmontools)
+setup-smart:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    service_user="${SUDO_USER:-$(id -un)}"
+    destination="/etc/sudoers.d/pi_stats-smartctl"
+    smartctl_path="/usr/sbin/smartctl"
+
+    if [[ ! -x "${smartctl_path}" ]]; then
+        echo "smartctl not found at ${smartctl_path}." >&2
+        echo "Install it first: sudo apt install smartmontools" >&2
+        exit 1
+    fi
+
+    if [[ "${service_user}" == *[!A-Za-z0-9_.-]* ]]; then
+        echo "Unsupported service user for sudoers: ${service_user}" >&2
+        exit 1
+    fi
+
+    rendered="$(mktemp)"
+    trap 'rm -f "$rendered"' EXIT
+    printf '%s ALL=(root) NOPASSWD: %s\n' "${service_user}" "${smartctl_path}" > "${rendered}"
+    chmod 0440 "${rendered}"
+
+    if ! visudo -cf "${rendered}" >/dev/null; then
+        echo "Generated sudoers snippet failed visudo validation" >&2
+        exit 1
+    fi
+
+    sudo install -m 0440 "${rendered}" "${destination}"
+    echo "Installed ${destination} for user ${service_user}"
+    echo "Restart pi_stats to pick up SMART disks: just restart pi_stats"
+
 [private]
 _services:
     #!/usr/bin/env bash

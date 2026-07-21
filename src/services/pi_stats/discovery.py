@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from json import JSONDecodeError, dumps, loads
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
 from wg_scripts import __version__
@@ -15,6 +17,17 @@ DISCOVERY_PREFIX: Final = "homeassistant"
 PAYLOAD_ONLINE: Final = "online"
 PAYLOAD_OFFLINE: Final = "offline"
 NON_ALPHANUMERIC: Final = re.compile(r"[^a-z0-9]+")
+SmartKind = Literal["ata", "nvme"]
+
+
+@dataclass(frozen=True, slots=True)
+class SmartDevice:
+    """A SMART-capable block device detected for optional pi_stats sensors."""
+
+    device: str
+    transport: str
+    kind: SmartKind
+    slug: str
 
 
 def path_to_slug(path: str) -> str:
@@ -95,6 +108,36 @@ def _sensor_component(
         component["unit_of_measurement"] = unit_of_measurement
     if state_class is not None:
         component["state_class"] = state_class
+    if device_class is not None:
+        component["device_class"] = device_class
+    return component
+
+
+def _binary_sensor_component(
+    *,
+    hostname: str,
+    metric: str,
+    name: str,
+    value_template: str,
+    icon: str,
+    force_update: bool,
+    payload_on: str,
+    payload_off: str,
+    device_class: str | None = None,
+) -> dict[str, Any]:
+    """Build one MQTT binary_sensor component config."""
+    unique_id = f"{hostname}_{metric}"
+    component: dict[str, Any] = {
+        "p": "binary_sensor",
+        "name": name,
+        "unique_id": unique_id,
+        "default_entity_id": f"binary_sensor.{unique_id}",
+        "icon": icon,
+        "force_update": force_update,
+        "value_template": value_template,
+        "payload_on": payload_on,
+        "payload_off": payload_off,
+    }
     if device_class is not None:
         component["device_class"] = device_class
     return component
@@ -280,11 +323,76 @@ def _disk_components(
     return components
 
 
+def _smart_components(
+    hostname: str,
+    devices: Sequence[SmartDevice],
+) -> dict[str, dict[str, Any]]:
+    """Build SMART health/temperature/wear sensors for detected disks."""
+    components: dict[str, dict[str, Any]] = {}
+
+    for device in devices:
+        jinja_slug = device.slug.replace("\\", "\\\\").replace("'", "\\'")
+        smart_path = f"value_json.smart['{jinja_slug}']"
+
+        health_metric = f"smart_{device.slug}_health"
+        components[f"{hostname}_{health_metric}"] = _binary_sensor_component(
+            hostname=hostname,
+            metric=health_metric,
+            name=f"SMART Health ({device.device})",
+            value_template=f"{{{{ {smart_path}.health }}}}",
+            icon="mdi:harddisk-plus",
+            force_update=True,
+            payload_on="FAILED",
+            payload_off="PASSED",
+            device_class="problem",
+        )
+
+        temperature_metric = f"smart_{device.slug}_temperature"
+        components[f"{hostname}_{temperature_metric}"] = _sensor_component(
+            hostname=hostname,
+            metric=temperature_metric,
+            name=f"SMART Temperature ({device.device})",
+            value_template=f"{{{{ {smart_path}.temperature }}}}",
+            icon="mdi:thermometer",
+            force_update=True,
+            unit_of_measurement="°C",
+            state_class="measurement",
+            device_class="temperature",
+        )
+
+        if device.kind == "nvme":
+            wear_metric = f"smart_{device.slug}_percentage_used"
+            components[f"{hostname}_{wear_metric}"] = _sensor_component(
+                hostname=hostname,
+                metric=wear_metric,
+                name=f"SSD Wear ({device.device})",
+                value_template=f"{{{{ {smart_path}.percentage_used }}}}",
+                icon="mdi:battery-heart-variant",
+                force_update=True,
+                unit_of_measurement="%",
+                state_class="measurement",
+            )
+        else:
+            wear_metric = f"smart_{device.slug}_reallocated_sectors"
+            components[f"{hostname}_{wear_metric}"] = _sensor_component(
+                hostname=hostname,
+                metric=wear_metric,
+                name=f"Reallocated Sectors ({device.device})",
+                value_template=f"{{{{ {smart_path}.reallocated_sectors }}}}",
+                icon="mdi:harddisk-remove",
+                force_update=True,
+                state_class="measurement",
+            )
+
+    return components
+
+
 def build_discovery_payload(
     hostname: str,
     disk_paths: tuple[str, ...] | list[str],
     *,
     has_fan: bool = False,
+    smart_devices: Sequence[SmartDevice] = (),
     sw_version: str = __version__,
 ) -> dict[str, Any]:
     """Build a retained MQTT device-discovery payload for pi_stats.
@@ -294,6 +402,7 @@ def build_discovery_payload(
         disk_paths: Filesystem paths that appear under `disk_usage` in the state
             payload.
         has_fan: When True, include pwmfan RPM/PWM sensors.
+        smart_devices: SMART-capable disks to expose as optional sensors.
         sw_version: Software version advertised in the discovery origin/device.
 
     Returns:
@@ -303,6 +412,8 @@ def build_discovery_payload(
     components.update(_disk_components(hostname, disk_paths))
     if has_fan:
         components.update(_fan_components(hostname))
+    if smart_devices:
+        components.update(_smart_components(hostname, smart_devices))
 
     return {
         "dev": {
@@ -329,9 +440,10 @@ def build_discovery_payload(
 def build_discovery_updates(
     hostname: str,
     disk_paths: tuple[str, ...] | list[str],
-    previous_component_ids: set[str] | frozenset[str],
+    previous_component_ids: set[str] | frozenset[str] | dict[str, str],
     *,
     has_fan: bool = False,
+    smart_devices: Sequence[SmartDevice] = (),
     sw_version: str = __version__,
 ) -> tuple[dict[str, Any], ...]:
     """Build the ordered discovery payloads needed to update a device.
@@ -343,8 +455,10 @@ def build_discovery_updates(
     Args:
         hostname: Pi hostname used in topics and unique IDs.
         disk_paths: Currently configured filesystem paths.
-        previous_component_ids: Component IDs published by the previous run.
+        previous_component_ids: Component IDs (or ID -> platform map) published by
+            the previous run.
         has_fan: When True, include pwmfan RPM/PWM sensors.
+        smart_devices: SMART-capable disks to expose as optional sensors.
         sw_version: Software version advertised in the discovery origin/device.
 
     Returns:
@@ -355,10 +469,18 @@ def build_discovery_updates(
         hostname,
         disk_paths,
         has_fan=has_fan,
+        smart_devices=smart_devices,
         sw_version=sw_version,
     )
     current_component_ids = set(clean_payload["cmps"])
-    removed_component_ids = previous_component_ids - current_component_ids
+    if isinstance(previous_component_ids, dict):
+        previous_platforms = previous_component_ids
+        previous_ids = set(previous_platforms)
+    else:
+        previous_ids = set(previous_component_ids)
+        previous_platforms = dict.fromkeys(previous_ids, "sensor")
+
+    removed_component_ids = previous_ids - current_component_ids
 
     if not removed_component_ids:
         return (clean_payload,)
@@ -368,7 +490,9 @@ def build_discovery_updates(
         "cmps": {
             **clean_payload["cmps"],
             **{
-                component_id: {"p": "sensor"}
+                component_id: {
+                    "p": previous_platforms.get(component_id, "sensor"),
+                }
                 for component_id in sorted(removed_component_ids)
             },
         },
@@ -381,20 +505,43 @@ def load_component_ids(path: Path) -> set[str]:
 
     Invalid or missing state is treated as no previous publication.
     """
+    return set(load_component_platforms(path))
+
+
+def load_component_platforms(path: Path) -> dict[str, str]:
+    """Load component ID -> MQTT platform from a previous discovery publication.
+
+    Supports the legacy list-of-IDs format (assumed ``sensor``) and the current
+    object map of ID to platform. Invalid or missing state is treated as empty.
+    """
     try:
         value = loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError, JSONDecodeError, OSError:
-        return set()
+        return {}
 
-    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-        return set()
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return dict.fromkeys(value, "sensor")
 
-    return set(value)
+    if isinstance(value, dict) and all(
+        isinstance(key, str) and isinstance(platform, str)
+        for key, platform in value.items()
+    ):
+        return dict(value)
+
+    return {}
 
 
 def save_component_ids(path: Path, component_ids: set[str]) -> None:
-    """Atomically persist the component IDs from a discovery publication."""
+    """Atomically persist component IDs as sensors (legacy helper)."""
+    save_component_platforms(path, dict.fromkeys(sorted(component_ids), "sensor"))
+
+
+def save_component_platforms(path: Path, component_platforms: dict[str, str]) -> None:
+    """Atomically persist component ID -> MQTT platform from a discovery publication."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = path.with_suffix(f"{path.suffix}.tmp")
-    temporary_path.write_text(dumps(sorted(component_ids)), encoding="utf-8")
+    temporary_path.write_text(
+        dumps(dict(sorted(component_platforms.items()))),
+        encoding="utf-8",
+    )
     temporary_path.replace(path)
