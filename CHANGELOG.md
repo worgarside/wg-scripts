@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.1.4 (2026-07-21)
+
+### Continuous Integration
+
+- Update PATH for seamless CI deploy
+  ([`cd44c4f`](https://github.com/worgarside/wg-scripts/commit/cd44c4faa07b065629145727a4b0d2d68d1cb93e))
+
+
 ## v2.1.3 (2026-07-20)
 
 ### Continuous Integration
