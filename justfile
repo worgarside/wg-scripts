@@ -180,7 +180,7 @@ restart-all:
     done
 
 # Pull latest main, sync runtime deps, and restart installed services.
-# After `just deploy <tag>` (detached HEAD), this switches back to main first.
+# After `just deploy <ref>` (detached HEAD), this switches back to main first.
 update:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -254,17 +254,40 @@ setup-deploy-key key:
         echo "Installed deploy key into ~/.ssh/authorized_keys"
     fi
 
-# Checkout a release tag (detached), sync runtime deps, and restart services.
+# Checkout a tag or branch (detached), sync runtime deps, and restart services.
 # Rejects a dirty tree. Use `just update` later to return to main and pull.
-deploy tag:
+# Examples:
+#   just deploy 2.1.4
+#   just deploy feature/smart
+deploy ref:
     #!/usr/bin/env bash
     set -euo pipefail
+    if [[ -z "{{ ref }}" ]]; then
+        echo "Usage: just deploy <tag-or-branch>" >&2
+        exit 1
+    fi
     if ! git diff --quiet || ! git diff --cached --quiet \
         || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
         echo "Working tree is dirty; commit or stash changes before deploying." >&2
         exit 1
     fi
-    git fetch --tags origin
-    git switch --detach "{{ tag }}"
+
+    git fetch --prune --tags origin
+
+    target=""
+    if git rev-parse --verify --quiet "refs/remotes/origin/{{ ref }}" >/dev/null; then
+        target="origin/{{ ref }}"
+    elif git rev-parse --verify --quiet "refs/tags/{{ ref }}" >/dev/null; then
+        target="{{ ref }}"
+    elif git rev-parse --verify --quiet "{{ ref }}" >/dev/null; then
+        target="{{ ref }}"
+    else
+        echo "Unknown ref after fetch: {{ ref }}" >&2
+        echo "Expected a remote branch (origin/{{ ref }}) or a tag." >&2
+        exit 1
+    fi
+
+    echo "Deploying ${target} ($(git rev-parse --short "${target}"))"
+    git switch --detach "${target}"
     just sync
     just restart-all
