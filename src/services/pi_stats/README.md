@@ -13,6 +13,7 @@ discovery so entities are created automatically.
 | MQTT_PASSWORD | MQTT broker password | N/A |
 | DISK_USAGE_PATHS | Comma-separated filesystem paths to report usage for | `/home` |
 | PI_STATS_DISCOVERY_STATE_PATH | File used to track previously discovered components | `~/.cache/wg-scripts/pi_stats-discovery-components.json` |
+| APT_CHECK_INTERVAL_SECONDS | How often to re-run `apt list --upgradable` | `21600` (6 hours) |
 
 ## Payload
 
@@ -43,6 +44,34 @@ payload also includes:
 
 These keys are omitted entirely on hosts without `pwmfan` (and for a sample if the
 sysfs read fails).
+
+### System health metrics
+
+Every minute the payload also includes low-overhead host health fields:
+
+| Key | Unit | Source |
+|-----|------|--------|
+| `throttled_flags` | int | `vcgencmd get_throttled` raw bitmask |
+| `throttling_active` | bool | bits 0–3 currently set |
+| `throttling_occurred` | bool | sticky bits 16–19 since boot |
+| `cpu_frequency_mhz` | MHz | `psutil.cpu_freq().current` |
+| `swap_usage` | % | `psutil.swap_memory().percent` |
+| `cpu_iowait` | % | non-blocking `psutil.cpu_times_percent().iowait` |
+| `network_interface` | — | primary NIC (matches `local_ip`, else first up physical) |
+| `network_link_up` | bool | `psutil.net_if_stats()` for that NIC |
+| `network_receive_bytes_per_second` | B/s | delta of `net_io_counters` between samples |
+| `network_transmit_bytes_per_second` | B/s | delta of `net_io_counters` between samples |
+| `pending_updates` | count | cached `apt list --upgradable` (no `apt update`) |
+| `reboot_required` | bool | presence of `/var/run/reboot-required` |
+
+Network byte rates are omitted from the first sample (no previous counter). Virtual
+interfaces (`lo`, `docker*`, `br-*`, `veth*`, `tailscale*`, …) are skipped when
+selecting the primary NIC.
+
+`pending_updates` is refreshed at startup and then only every
+`APT_CHECK_INTERVAL_SECONDS` (default six hours). That avoids a material CPU cost
+from apt while still surfacing package debt. Failures to run apt omit the key for
+that cycle without stopping stats publishing.
 
 ### SMART disks (optional)
 
@@ -101,6 +130,10 @@ That creates one Home Assistant device containing:
 
 - Fixed sensors with stable IDs (`sensor.<hostname>_cpu_usage`,
   `sensor.<hostname>_wg_scripts_version`, etc.)
+- System-health sensors: CPU frequency, swap usage, I/O wait, network rates,
+  pending updates
+- Problem/connectivity binary sensors: throttling active / since boot, network
+  link, reboot required
 - One disk-usage sensor per `DISK_USAGE_PATHS` entry
 - Fan Speed / Fan PWM sensors when `pwmfan` hwmon is detected at startup
 - Per SMART disk (when detected): health binary sensor, temperature, and wear

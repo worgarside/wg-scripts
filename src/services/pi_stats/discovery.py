@@ -93,6 +93,7 @@ def _sensor_component(
     unit_of_measurement: str | None = None,
     state_class: str | None = None,
     device_class: str | None = None,
+    entity_category: str | None = None,
 ) -> dict[str, Any]:
     """Build one MQTT sensor component config."""
     unique_id = f"{hostname}_{metric}"
@@ -111,6 +112,8 @@ def _sensor_component(
         component["state_class"] = state_class
     if device_class is not None:
         component["device_class"] = device_class
+    if entity_category is not None:
+        component["entity_category"] = entity_category
     return component
 
 
@@ -125,6 +128,7 @@ def _binary_sensor_component(
     payload_on: str,
     payload_off: str,
     device_class: str | None = None,
+    entity_category: str | None = None,
 ) -> dict[str, Any]:
     """Build one MQTT binary_sensor component config."""
     unique_id = f"{hostname}_{metric}"
@@ -141,6 +145,8 @@ def _binary_sensor_component(
     }
     if device_class is not None:
         component["device_class"] = device_class
+    if entity_category is not None:
+        component["entity_category"] = entity_category
     return component
 
 
@@ -170,10 +176,41 @@ def _fixed_components(hostname: str) -> dict[str, dict[str, Any]]:
         ),
         _sensor_component(
             hostname=hostname,
+            metric="cpu_frequency",
+            name="CPU Frequency",
+            value_template="{{ value_json.cpu_frequency_mhz }}",
+            icon="mdi:speedometer",
+            force_update=True,
+            unit_of_measurement="MHz",
+            state_class="measurement",
+            device_class="frequency",
+        ),
+        _sensor_component(
+            hostname=hostname,
             metric="memory_usage",
             name="Memory Usage",
             value_template="{{ value_json.memory_usage }}",
             icon="mdi:memory",
+            force_update=True,
+            unit_of_measurement="%",
+            state_class="measurement",
+        ),
+        _sensor_component(
+            hostname=hostname,
+            metric="swap_usage",
+            name="Swap Usage",
+            value_template="{{ value_json.swap_usage }}",
+            icon="mdi:harddisk",
+            force_update=True,
+            unit_of_measurement="%",
+            state_class="measurement",
+        ),
+        _sensor_component(
+            hostname=hostname,
+            metric="cpu_iowait",
+            name="CPU I/O Wait",
+            value_template="{{ value_json.cpu_iowait }}",
+            icon="mdi:timer-sand",
             force_update=True,
             unit_of_measurement="%",
             state_class="measurement",
@@ -266,6 +303,102 @@ def _fixed_components(hostname: str) -> dict[str, dict[str, Any]]:
             ),
             icon="mdi:ip-network-outline",
             force_update=True,
+        ),
+        _sensor_component(
+            hostname=hostname,
+            metric="network_interface",
+            name="Network Interface",
+            value_template="{{ value_json.network_interface }}",
+            icon="mdi:network-outline",
+            force_update=False,
+            entity_category="diagnostic",
+        ),
+        _sensor_component(
+            hostname=hostname,
+            metric="network_receive",
+            name="Network Receive",
+            value_template="{{ value_json.network_receive_bytes_per_second }}",
+            icon="mdi:download-network",
+            force_update=True,
+            unit_of_measurement="B/s",
+            state_class="measurement",
+            device_class="data_rate",
+        ),
+        _sensor_component(
+            hostname=hostname,
+            metric="network_transmit",
+            name="Network Transmit",
+            value_template="{{ value_json.network_transmit_bytes_per_second }}",
+            icon="mdi:upload-network",
+            force_update=True,
+            unit_of_measurement="B/s",
+            state_class="measurement",
+            device_class="data_rate",
+        ),
+        _sensor_component(
+            hostname=hostname,
+            metric="pending_updates",
+            name="Pending Updates",
+            value_template="{{ value_json.pending_updates }}",
+            icon="mdi:package-up",
+            force_update=False,
+            state_class="measurement",
+        ),
+        _binary_sensor_component(
+            hostname=hostname,
+            metric="throttling_active",
+            name="Throttling Active",
+            value_template=(
+                "{% if value_json.throttling_active is defined %}"
+                "{{ 'ON' if value_json.throttling_active else 'OFF' }}"
+                "{% endif %}"
+            ),
+            icon="mdi:alert-octagon",
+            force_update=True,
+            payload_on="ON",
+            payload_off="OFF",
+            device_class="problem",
+        ),
+        _binary_sensor_component(
+            hostname=hostname,
+            metric="throttling_occurred",
+            name="Throttling Since Boot",
+            value_template=(
+                "{% if value_json.throttling_occurred is defined %}"
+                "{{ 'ON' if value_json.throttling_occurred else 'OFF' }}"
+                "{% endif %}"
+            ),
+            icon="mdi:alert",
+            force_update=True,
+            payload_on="ON",
+            payload_off="OFF",
+            device_class="problem",
+        ),
+        _binary_sensor_component(
+            hostname=hostname,
+            metric="network_link",
+            name="Network Link",
+            value_template=(
+                "{% if value_json.network_link_up is defined %}"
+                "{{ 'ON' if value_json.network_link_up else 'OFF' }}"
+                "{% endif %}"
+            ),
+            icon="mdi:ethernet",
+            force_update=True,
+            payload_on="ON",
+            payload_off="OFF",
+            device_class="connectivity",
+        ),
+        _binary_sensor_component(
+            hostname=hostname,
+            metric="reboot_required",
+            name="Reboot Required",
+            value_template="{{ 'ON' if value_json.reboot_required else 'OFF' }}",
+            icon="mdi:restart-alert",
+            force_update=False,
+            payload_on="ON",
+            payload_off="OFF",
+            device_class="problem",
         ),
     ]
 

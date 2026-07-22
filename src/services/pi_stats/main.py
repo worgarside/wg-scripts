@@ -13,7 +13,7 @@ from os import getenv, getloadavg
 from pathlib import Path
 from subprocess import run  # noqa: S404
 from threading import Event
-from time import sleep, time
+from time import monotonic, sleep, time
 from typing import TYPE_CHECKING, ClassVar, Final, NotRequired, TypedDict
 
 import psutil
@@ -53,6 +53,20 @@ ONE_MINUTE: Final = 60
 HWMON_ROOT: Final = Path("/sys/class/hwmon")
 PWM_MAX_DUTY: Final = 255
 SMARTCTL: Final = "/usr/sbin/smartctl"
+APT_BIN: Final = "/usr/bin/apt"
+REBOOT_REQUIRED_PATH: Final = Path("/var/run/reboot-required")
+THROTTLED_ACTIVE_MASK: Final = 0xF
+THROTTLED_OCCURRED_MASK: Final = 0xF0000
+THROTTLED_OUTPUT: Final = re.compile(r"throttled=(0x[0-9a-fA-F]+)")
+VIRTUAL_INTERFACE_PREFIXES: Final = (
+    "lo",
+    "docker",
+    "br-",
+    "veth",
+    "virbr",
+    "tailscale",
+    "wg",
+)
 ATA_WEAR_ATTRIBUTE_IDS: Final = frozenset({5, 197})
 # Prefer sat first: common for USB-SATA bridges that smartctl --scan-open skips
 # (e.g. JMicron 0x152d:0xa578 on vaultpi).
@@ -74,6 +88,24 @@ DISK_USAGE_PATHS: Final[tuple[str, ...]] = tuple(
     if path.strip()
 )
 
+
+def _positive_int_env(name: str, default: str) -> int:
+    """Parse a positive integer environment variable or raise ValueError."""
+    raw = getenv(name, default)
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a positive integer, got {raw!r}") from exc
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer, got {value}")
+    return value
+
+
+APT_CHECK_INTERVAL_SECONDS: Final = _positive_int_env(
+    "APT_CHECK_INTERVAL_SECONDS",
+    "21600",
+)
+
 AVAILABILITY_TOPIC: Final = availability_topic(mqtt.HOSTNAME)
 DISCOVERY_TOPIC: Final = discovery_topic(mqtt.HOSTNAME)
 DISCOVERY_STATE_PATH: Final = Path(
@@ -89,6 +121,8 @@ PUBLISH_TIMEOUT_SECONDS: Final = 5
 _DISCOVERY_NEEDED: Final = Event()
 _FAN_READ_ERRORS_LOGGED: Final[set[str]] = set()
 _SMART_READ_ERRORS_LOGGED: Final[set[str]] = set()
+_APT_READ_ERRORS_LOGGED: Final[set[str]] = set()
+_THROTTLED_READ_ERRORS_LOGGED: Final[set[str]] = set()
 
 
 class SmartDeviceStats(TypedDict):
@@ -120,6 +154,18 @@ class Stats(TypedDict):
     fan_speed_rpm: NotRequired[int]
     fan_pwm_percent: NotRequired[float]
     smart: NotRequired[dict[str, SmartDeviceStats]]
+    throttled_flags: NotRequired[int]
+    throttling_active: NotRequired[bool]
+    throttling_occurred: NotRequired[bool]
+    cpu_frequency_mhz: NotRequired[float]
+    swap_usage: float
+    cpu_iowait: float
+    network_interface: NotRequired[str]
+    network_link_up: NotRequired[bool]
+    network_receive_bytes_per_second: NotRequired[float]
+    network_transmit_bytes_per_second: NotRequired[float]
+    pending_updates: NotRequired[int]
+    reboot_required: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -604,6 +650,143 @@ def local_ip() -> str:
     return str(ip)
 
 
+def read_throttled_flags() -> tuple[int, bool, bool] | None:
+    """Read and decode ``vcgencmd get_throttled``.
+
+    Returns:
+        ``(flags, active, occurred)`` when readable, otherwise ``None``.
+        ``active`` covers bits 0-3; ``occurred`` covers sticky bits 16-19.
+    """
+    try:
+        output, error = run_cmd("vcgencmd get_throttled", exit_on_error=False)
+    except OSError as exc:
+        error_key = type(exc).__name__
+        if error_key not in _THROTTLED_READ_ERRORS_LOGGED:
+            _THROTTLED_READ_ERRORS_LOGGED.add(error_key)
+            LOGGER.exception("Failed to read vcgencmd get_throttled")
+        return None
+
+    match = THROTTLED_OUTPUT.search(output)
+    if match is None:
+        error_key = "ParseError"
+        if error_key not in _THROTTLED_READ_ERRORS_LOGGED:
+            _THROTTLED_READ_ERRORS_LOGGED.add(error_key)
+            LOGGER.warning(
+                "Unexpected get_throttled output: %r (stderr=%r)",
+                output,
+                error,
+            )
+        return None
+
+    flags = int(match.group(1), 16)
+    return (
+        flags,
+        bool(flags & THROTTLED_ACTIVE_MASK),
+        bool(flags & THROTTLED_OCCURRED_MASK),
+    )
+
+
+def read_cpu_frequency_mhz() -> float | None:
+    """Return current CPU frequency in MHz, if available."""
+    try:
+        freq = psutil.cpu_freq()
+    except OSError:
+        return None
+    if freq.current <= 0:
+        return None
+    return float(round(freq.current, 1))
+
+
+def read_cpu_iowait_percent() -> float:
+    """Return non-blocking CPU iowait percentage for this sample."""
+    cpu_times = psutil.cpu_times_percent(interval=None)
+    return float(round(getattr(cpu_times, "iowait", 0.0), 2))
+
+
+class NetworkSample(TypedDict):
+    """Primary-interface network fields for one stats sample."""
+
+    network_interface: NotRequired[str]
+    network_link_up: NotRequired[bool]
+    network_receive_bytes_per_second: NotRequired[float]
+    network_transmit_bytes_per_second: NotRequired[float]
+
+
+def is_virtual_interface(name: str) -> bool:
+    """Return True for loopback / container / VPN virtual interfaces."""
+    return name.startswith(VIRTUAL_INTERFACE_PREFIXES)
+
+
+def select_primary_interface(ip_address: str) -> str | None:
+    """Pick the interface owning ``ip_address``, else first up physical NIC."""
+    try:
+        addrs = psutil.net_if_addrs()
+        stats = psutil.net_if_stats()
+    except OSError:
+        LOGGER.exception("Failed to enumerate network interfaces")
+        return None
+
+    for name, addresses in addrs.items():
+        if is_virtual_interface(name):
+            continue
+        for address in addresses:
+            if address.family == socket.AF_INET and address.address == ip_address:
+                return name
+
+    for name, nic_stats in stats.items():
+        if is_virtual_interface(name) or not nic_stats.isup:
+            continue
+        return name
+
+    return None
+
+
+def count_pending_updates() -> int | None:
+    """Count packages reported by ``apt list --upgradable`` (no index refresh)."""
+    try:
+        completed = run(  # noqa: S603
+            [APT_BIN, "list", "--upgradable"],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    except FileNotFoundError, PermissionError:
+        error_key = "Unavailable"
+        if error_key not in _APT_READ_ERRORS_LOGGED:
+            _APT_READ_ERRORS_LOGGED.add(error_key)
+            LOGGER.warning("apt unavailable at %s", APT_BIN)
+        return None
+    except OSError as exc:
+        error_key = type(exc).__name__
+        if error_key not in _APT_READ_ERRORS_LOGGED:
+            _APT_READ_ERRORS_LOGGED.add(error_key)
+            LOGGER.exception("Failed to invoke apt list --upgradable")
+        return None
+
+    if completed.returncode != 0 and not completed.stdout.strip():
+        error_key = f"Exit{completed.returncode}"
+        if error_key not in _APT_READ_ERRORS_LOGGED:
+            _APT_READ_ERRORS_LOGGED.add(error_key)
+            LOGGER.warning(
+                "apt list --upgradable failed: %s",
+                completed.stderr.strip() or completed.returncode,
+            )
+        return None
+
+    count = 0
+    for line in completed.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("Listing"):
+            continue
+        count += 1
+    return count
+
+
+def reboot_required() -> bool:
+    """Return whether the host has a pending reboot marker."""
+    return REBOOT_REQUIRED_PATH.exists()
+
+
 @dataclass
 class RaspberryPi:
     """Class to represent a Pi and its current statistics."""
@@ -617,6 +800,117 @@ class RaspberryPi:
 
     get_count: int = 0
     smart_cache: dict[str, SmartDeviceStats] = field(default_factory=dict)
+    pending_updates: int | None = None
+    pending_updates_checked_at: float = 0.0
+    net_sample_mono: float | None = None
+    net_bytes_recv: int | None = None
+    net_bytes_sent: int | None = None
+
+    def __post_init__(self) -> None:
+        """Prime non-blocking CPU percent counters before the first sample."""
+        psutil.cpu_percent(interval=None)
+        psutil.cpu_times_percent(interval=None)
+        self.boot_time_iso = datetime.fromtimestamp(self.boot_time, tz=UTC).isoformat()
+        self._refresh_pending_updates(force=True)
+
+    def _refresh_pending_updates(self, *, force: bool = False) -> None:
+        """Refresh the cached apt upgradable count on the configured cadence."""
+        now = monotonic()
+        if (
+            not force
+            and self.pending_updates is not None
+            and (now - self.pending_updates_checked_at) < APT_CHECK_INTERVAL_SECONDS
+        ):
+            return
+
+        counted = count_pending_updates()
+        self.pending_updates_checked_at = now
+        if counted is not None:
+            self.pending_updates = counted
+
+    def _network_stats(self, ip_address: str) -> NetworkSample:
+        """Collect primary-interface link state and byte rates."""
+        result: NetworkSample = {}
+        interface = select_primary_interface(ip_address)
+        if interface is None:
+            return result
+
+        result["network_interface"] = interface
+
+        try:
+            nic_stats = psutil.net_if_stats().get(interface)
+            counters = psutil.net_io_counters(pernic=True).get(interface)
+        except OSError:
+            LOGGER.exception("Failed to read network stats for %s", interface)
+            return result
+
+        if nic_stats is not None:
+            result["network_link_up"] = bool(nic_stats.isup)
+
+        now = monotonic()
+        if counters is not None:
+            if (
+                self.net_sample_mono is not None
+                and self.net_bytes_recv is not None
+                and self.net_bytes_sent is not None
+            ):
+                elapsed = now - self.net_sample_mono
+                if elapsed > 0:
+                    result["network_receive_bytes_per_second"] = float(
+                        round((counters.bytes_recv - self.net_bytes_recv) / elapsed, 1),
+                    )
+                    result["network_transmit_bytes_per_second"] = float(
+                        round((counters.bytes_sent - self.net_bytes_sent) / elapsed, 1),
+                    )
+
+            self.net_sample_mono = now
+            self.net_bytes_recv = int(counters.bytes_recv)
+            self.net_bytes_sent = int(counters.bytes_sent)
+
+        return result
+
+    def _attach_network_stats(self, stats: Stats) -> None:
+        """Attach primary-interface network fields onto a stats payload."""
+        network = self._network_stats(stats["local_ip"])
+        if "network_interface" in network:
+            stats["network_interface"] = network["network_interface"]
+        if "network_link_up" in network:
+            stats["network_link_up"] = network["network_link_up"]
+        if "network_receive_bytes_per_second" in network:
+            stats["network_receive_bytes_per_second"] = network[
+                "network_receive_bytes_per_second"
+            ]
+        if "network_transmit_bytes_per_second" in network:
+            stats["network_transmit_bytes_per_second"] = network[
+                "network_transmit_bytes_per_second"
+            ]
+
+    def _attach_optional_stats(self, stats: Stats, *, refresh_slow: bool) -> None:
+        """Attach optional / cached fields onto a base stats payload."""
+        if (fan_stats := read_fan_stats()) is not None:
+            fan_speed_rpm, fan_pwm_percent = fan_stats
+            stats["fan_speed_rpm"] = fan_speed_rpm
+            stats["fan_pwm_percent"] = fan_pwm_percent
+
+        smart_devices = find_smart_devices()
+        if smart_devices:
+            if refresh_slow or not self.smart_cache:
+                self.smart_cache = read_smart_stats(smart_devices)
+            stats["smart"] = self.smart_cache
+
+        if (throttled := read_throttled_flags()) is not None:
+            flags, active, occurred = throttled
+            stats["throttled_flags"] = flags
+            stats["throttling_active"] = active
+            stats["throttling_occurred"] = occurred
+
+        if (cpu_frequency_mhz := read_cpu_frequency_mhz()) is not None:
+            stats["cpu_frequency_mhz"] = cpu_frequency_mhz
+
+        self._attach_network_stats(stats)
+
+        if self.pending_updates is not None:
+            stats["pending_updates"] = self.pending_updates
 
     def get_stats(self) -> Stats:
         """Get the current stats for the Pi.
@@ -627,6 +921,7 @@ class RaspberryPi:
         # Doing this first and separately so the other properties don't affect the
         # readings
         load_1m, load_5m, load_15m = self.load_averages
+        cpu_iowait = read_cpu_iowait_percent()
 
         cpu_usage, memory_usage, temperature, uptime = (
             self.cpu_usage,
@@ -649,6 +944,7 @@ class RaspberryPi:
             local_ip.cache_clear()
 
         self.get_count += 1
+        self._refresh_pending_updates()
 
         stats: Stats = {
             "cpu_usage": cpu_usage,
@@ -665,19 +961,11 @@ class RaspberryPi:
             "local_ip": local_ip(),
             "service_start_time": SERVICE_START_TIME,
             "wg_scripts_version": __version__,
+            "swap_usage": float(round(psutil.swap_memory().percent, 2)),
+            "cpu_iowait": cpu_iowait,
+            "reboot_required": reboot_required(),
         }
-
-        if (fan_stats := read_fan_stats()) is not None:
-            fan_speed_rpm, fan_pwm_percent = fan_stats
-            stats["fan_speed_rpm"] = fan_speed_rpm
-            stats["fan_pwm_percent"] = fan_pwm_percent
-
-        smart_devices = find_smart_devices()
-        if smart_devices:
-            if refresh_slow or not self.smart_cache:
-                self.smart_cache = read_smart_stats(smart_devices)
-            stats["smart"] = self.smart_cache
-
+        self._attach_optional_stats(stats, refresh_slow=refresh_slow)
         return stats
 
     @property
@@ -724,7 +1012,7 @@ class RaspberryPi:
         Returns:
             float: the percentage of CPU currently in use.
         """
-        return float(round(psutil.cpu_percent(), 2))
+        return float(round(psutil.cpu_percent(interval=None), 2))
 
     @property
     def load_averages(self) -> tuple[float, float, float]:
