@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.3.0 (2026-07-22)
+
+### Features
+
+- Expand system health monitoring ([#398](https://github.com/worgarside/wg-scripts/pull/398),
+  [`5b96923`](https://github.com/worgarside/wg-scripts/commit/5b9692375b07ebb176ba7c6d7000e13da7362bdf))
+
+
 ## v2.2.0 (2026-07-21)
 
 ### Features
