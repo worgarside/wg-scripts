@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Clone Repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           token: ${{ secrets.WORGARSIDE_DEV_TOKEN }}
@@ -46,7 +46,7 @@ jobs:
 
       - name: Run prek
         id: run-pch
-        uses: j178/prek-action@5337cb91e0fa35a7ff31b9ca345126d8bbbcdf16 # v2
+        uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
         continue-on-error: true
         with:
           prek-version: 0.3.11
