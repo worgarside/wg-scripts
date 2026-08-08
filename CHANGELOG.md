@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v2.3.1 (2026-08-08)
+
+### Bug Fixes
+
+- Restart pi stats after mqtt disconnect ([#402](https://github.com/worgarside/wg-scripts/pull/402),
+  [`a653de2`](https://github.com/worgarside/wg-scripts/commit/a653de27c138be4469fdf39030d83cc16a76519d))
+
+### Chores
+
+- Pin GitHub Actions to latest release SHAs
+  ([#400](https://github.com/worgarside/wg-scripts/pull/400),
+  [`fbf495e`](https://github.com/worgarside/wg-scripts/commit/fbf495ef98158aa0f47beb1a9e65d1dd1fde8de5))
+
+
 ## v2.3.0 (2026-07-22)
 
 ### Features
