@@ -15,14 +15,11 @@ on:
         description: The tag to deploy. Will attempt a new release if omitted.
         required: false
       force-deployment:
-        description: >-
-          Version component to force, prerelease to increment the prerelease
-          revision, or auto to use semantic commit parsing.
+        description: Force a release at a specific level, bypassing normal detection
         required: true
         type: choice
         options:
           - auto
-          - prerelease
           - patch
           - minor
           - major
@@ -57,7 +54,7 @@ jobs:
         run: echo -e "\`\`\`json\n$INPUTS\n\`\`\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clone Repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.ref }}
