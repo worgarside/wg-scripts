@@ -105,6 +105,10 @@ APT_CHECK_INTERVAL_SECONDS: Final = _positive_int_env(
     "APT_CHECK_INTERVAL_SECONDS",
     "21600",
 )
+MQTT_DISCONNECT_EXIT_SECONDS: Final = _positive_int_env(
+    "PI_STATS_MQTT_DISCONNECT_EXIT_SECONDS",
+    "60",
+)
 
 AVAILABILITY_TOPIC: Final = availability_topic(mqtt.HOSTNAME)
 DISCOVERY_TOPIC: Final = discovery_topic(mqtt.HOSTNAME)
@@ -1143,6 +1147,28 @@ def shutdown(client: Client) -> None:
         client.loop_stop()
 
 
+def record_mqtt_disconnection(disconnected_since: float | None) -> float:
+    """Record a disconnection or exit after the recovery deadline expires."""
+    now = monotonic()
+    if disconnected_since is None:
+        LOGGER.warning(
+            "Disconnected from MQTT broker; waiting up to %d seconds for automatic "
+            "reconnection",
+            MQTT_DISCONNECT_EXIT_SECONDS,
+        )
+        return now
+
+    if now - disconnected_since >= MQTT_DISCONNECT_EXIT_SECONDS:
+        LOGGER.error(
+            "MQTT broker remained disconnected for %d seconds; exiting so the "
+            "service manager can restart the process",
+            MQTT_DISCONNECT_EXIT_SECONDS,
+        )
+        raise SystemExit(1)
+
+    return disconnected_since
+
+
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Sends system stats to Home Assistant every minute."""
@@ -1174,6 +1200,8 @@ def main() -> None:
         LOGGER.error("Failed to connect to MQTT broker, exiting")
         raise SystemExit(1)
 
+    disconnected_since: float | None = None
+
     try:
         # This is done as a while loop, rather than a cron job, so that instantiating
         # the pi etc. every time doesn't influence the readings
@@ -1182,8 +1210,11 @@ def main() -> None:
                 publish_discovery_if_needed(mqtt.CLIENT)
 
                 if not mqtt.CLIENT.is_connected():
+                    disconnected_since = record_mqtt_disconnection(disconnected_since)
                     sleep(1)
                     continue
+
+                disconnected_since = None
 
                 try:
                     mqtt.CLIENT.publish(
