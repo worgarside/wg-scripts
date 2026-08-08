@@ -1,9 +1,8 @@
----
-description: Do not add unit tests unless the user explicitly requests them
-alwaysApply: true
----
+# Agent notes
 
-# No Unit Tests by Default
+This file provides guidance to AI coding agents working in this repository.
+
+## No Unit Tests by Default
 
 This repository contains personal scripts whose failures become apparent quickly.
 
