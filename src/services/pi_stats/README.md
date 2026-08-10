@@ -44,13 +44,14 @@ collection. For example:
 PI_STATS_MOUNTS_JSON='[{"id":"vault_hdd","path":"/mnt/vault-hdd","source":"/dev/mapper/vault-hdd","required_directories":["pbs","immich"]},{"id":"vault_ssd","path":"/mnt/vault-ssd","source":"/dev/mapper/vault-ssd","required_directories":[]}]'
 ```
 
-Each check requires an exact Linux mountpoint, the expected source after resolving
-device-mapper symlinks, read/write mount and superblock options, and every configured
-child directory. The state payload always includes configured checks—even when they
-fail—under `mount_health`, with booleans, the observed source, missing directories,
-and stable reason codes (`not_mounted`, `wrong_source`, `read_only`,
-`missing_required_directories`, and `inspection_error`). Invalid configuration
-fails before MQTT is touched.
+Each check requires an exact Linux mountpoint, the expected source, read/write mount
+and superblock options, and every configured child directory. Local absolute sources
+(such as device-mapper paths) are compared after resolving symlinks; non-path sources
+(such as NFS exports) are compared literally. The state payload always includes
+configured checks—even when they fail—under `mount_health`, with booleans, the
+observed source, missing directories, and stable reason codes (`not_mounted`,
+`wrong_source`, `read_only`, `missing_required_directories`, and
+`inspection_error`). Invalid configuration fails before MQTT is touched.
 
 When a Pi 5 Active Cooler (or compatible) exposes a `pwmfan` hwmon device, the
 payload also includes:

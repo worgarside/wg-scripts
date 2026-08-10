@@ -55,6 +55,29 @@ class MountHealth(TypedDict):
     reasons: list[str]
 
 
+def _normalize_mount_path(path: str) -> str:
+    """Normalize a Linux mountpoint path for mountinfo lookup."""
+    normalized_path = posixpath.normpath(path)
+    if normalized_path.startswith("//"):
+        return f"/{normalized_path.lstrip('/')}"
+    return normalized_path
+
+
+def _sources_match(
+    actual_source: str,
+    expected_source: str,
+    *,
+    realpath: Callable[[str], str],
+) -> bool:
+    """Compare local sources by resolved path and other sources literally."""
+    if (
+        PurePosixPath(actual_source).root == "/"
+        and PurePosixPath(expected_source).root == "/"
+    ):
+        return realpath(actual_source) == realpath(expected_source)
+    return actual_source == expected_source
+
+
 def _parse_required_directories(
     identifier: str,
     value: object,
@@ -97,11 +120,13 @@ def _parse_mount_check(index: int, item: object) -> MountCheck:
         )
     if not isinstance(path, str):
         raise TypeError(f"Mount check {identifier!r} path must be a string")
-    path = posixpath.normpath(path)
+    path = _normalize_mount_path(path)
     if not PurePosixPath(path).is_absolute():
         raise ValueError(f"Mount check {identifier!r} path must be absolute")
-    if not isinstance(source, str) or not PurePosixPath(source).is_absolute():
-        raise ValueError(f"Mount check {identifier!r} source must be absolute")
+    if not isinstance(source, str):
+        raise TypeError(f"Mount check {identifier!r} source must be a string")
+    if not source:
+        raise ValueError(f"Mount check {identifier!r} source must not be empty")
 
     return MountCheck(
         identifier=identifier,
@@ -181,7 +206,12 @@ def inspect_mount(
     mount = mounts.get(check.path)
     mounted = mount is not None
     source_matches = bool(
-        mount is not None and realpath(mount.source) == realpath(check.source),
+        mount is not None
+        and _sources_match(
+            mount.source,
+            check.source,
+            realpath=realpath,
+        ),
     )
     read_write = bool(
         mount is not None and "rw" in mount.mount_options and "rw" in mount.super_options,
