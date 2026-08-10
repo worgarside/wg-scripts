@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from services.pi_stats.mount_health import MountCheck
+
 from wg_scripts import __version__
 
 DISCOVERY_PREFIX: Final = "homeassistant"
@@ -457,6 +459,37 @@ def _disk_components(
     return components
 
 
+def _mount_components(
+    hostname: str,
+    mount_checks: Sequence[MountCheck],
+) -> dict[str, dict[str, Any]]:
+    """Build one problem binary sensor per configured mount check."""
+    components: dict[str, dict[str, Any]] = {}
+    for check in mount_checks:
+        metric = f"mount_{check.identifier}_problem"
+        jinja_identifier = check.identifier.replace("\\", "\\\\").replace("'", "\\'")
+        health_path = f"value_json.mount_health['{jinja_identifier}']"
+        component = _binary_sensor_component(
+            hostname=hostname,
+            metric=metric,
+            name=f"Mount {check.identifier.replace('_', ' ').title()} Problem",
+            value_template=(
+                f"{{% if {health_path} is defined %}}"
+                f"{{{{ 'OFF' if {health_path}.healthy else 'ON' }}}}"
+                "{% endif %}"
+            ),
+            icon="mdi:harddisk-alert",
+            force_update=True,
+            payload_on="ON",
+            payload_off="OFF",
+            device_class="problem",
+            entity_category="diagnostic",
+        )
+        component["json_attributes_template"] = f"{{{{ {health_path} | tojson }}}}"
+        components[component["unique_id"]] = component
+    return components
+
+
 def _smart_components(
     hostname: str,
     devices: Sequence[SmartDevice],
@@ -526,6 +559,7 @@ def build_discovery_payload(
     hostname: str,
     disk_paths: tuple[str, ...] | list[str],
     *,
+    mount_checks: Sequence[MountCheck] = (),
     has_fan: bool = False,
     smart_devices: Sequence[SmartDevice] = (),
     sw_version: str = __version__,
@@ -536,6 +570,7 @@ def build_discovery_payload(
         hostname: Pi hostname used in topics and unique IDs.
         disk_paths: Filesystem paths that appear under `disk_usage` in the state
             payload.
+        mount_checks: Explicit source/read-write/directory checks to expose.
         has_fan: When True, include pwmfan RPM/PWM sensors.
         smart_devices: SMART-capable disks to expose as optional sensors.
         sw_version: Software version advertised in the discovery origin/device.
@@ -545,6 +580,7 @@ def build_discovery_payload(
     """
     components = _fixed_components(hostname)
     components.update(_disk_components(hostname, disk_paths))
+    components.update(_mount_components(hostname, mount_checks))
     if has_fan:
         components.update(_fan_components(hostname))
     if smart_devices:
@@ -577,6 +613,7 @@ def build_discovery_updates(
     disk_paths: tuple[str, ...] | list[str],
     previous_component_ids: set[str] | frozenset[str] | dict[str, str],
     *,
+    mount_checks: Sequence[MountCheck] = (),
     has_fan: bool = False,
     smart_devices: Sequence[SmartDevice] = (),
     sw_version: str = __version__,
@@ -592,6 +629,7 @@ def build_discovery_updates(
         disk_paths: Currently configured filesystem paths.
         previous_component_ids: Component IDs (or ID -> platform map) published by
             the previous run.
+        mount_checks: Explicit source/read-write/directory checks to expose.
         has_fan: When True, include pwmfan RPM/PWM sensors.
         smart_devices: SMART-capable disks to expose as optional sensors.
         sw_version: Software version advertised in the discovery origin/device.
@@ -603,6 +641,7 @@ def build_discovery_updates(
     clean_payload = build_discovery_payload(
         hostname,
         disk_paths,
+        mount_checks=mount_checks,
         has_fan=has_fan,
         smart_devices=smart_devices,
         sw_version=sw_version,

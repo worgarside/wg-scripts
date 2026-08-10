@@ -36,6 +36,11 @@ from services.pi_stats.discovery import (
     save_component_platforms,
     stats_topic,
 )
+from services.pi_stats.mount_health import (
+    MountHealth,
+    collect_mount_health,
+    parse_mount_checks,
+)
 from wg_scripts import __version__
 
 if TYPE_CHECKING:
@@ -87,6 +92,7 @@ DISK_USAGE_PATHS: Final[tuple[str, ...]] = tuple(
     for path in getenv("DISK_USAGE_PATHS", "/home").split(",")
     if path.strip()
 )
+MOUNT_CHECKS: Final = parse_mount_checks(getenv("PI_STATS_MOUNTS_JSON", "[]"))
 
 
 def _positive_int_env(name: str, default: str) -> int:
@@ -145,6 +151,7 @@ class Stats(TypedDict):
     memory_usage: float
     temperature: float
     disk_usage: dict[str, float]
+    mount_health: NotRequired[dict[str, MountHealth]]
     load_1m: float
     load_5m: float
     load_15m: float
@@ -602,7 +609,9 @@ def read_smart_stats(
             error_key = f"{device.device}:NoOutput"
             if error_key not in _SMART_READ_ERRORS_LOGGED:
                 _SMART_READ_ERRORS_LOGGED.add(error_key)
-                LOGGER.warning("SMART read for %s returned no usable JSON", device.device)
+                LOGGER.warning(
+                    "SMART read for %s returned no usable JSON", device.device
+                )
             continue
 
         parsed = _parse_smart_device_stats(device, probe)
@@ -969,6 +978,8 @@ class RaspberryPi:
             "cpu_iowait": cpu_iowait,
             "reboot_required": reboot_required(),
         }
+        if MOUNT_CHECKS:
+            stats["mount_health"] = collect_mount_health(MOUNT_CHECKS)
         self._attach_optional_stats(stats, refresh_slow=refresh_slow)
         return stats
 
@@ -1054,6 +1065,7 @@ def publish_discovery(client: Client) -> None:
         mqtt.HOSTNAME,
         DISK_USAGE_PATHS,
         previous_component_platforms,
+        mount_checks=MOUNT_CHECKS,
         has_fan=find_pwmfan_hwmon() is not None,
         smart_devices=find_smart_devices(),
     )
