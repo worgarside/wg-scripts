@@ -13,14 +13,12 @@ on:
     inputs:
       force-deployment:
         description: >-
-          Version component to force, prerelease to increment the prerelease
-          revision, or auto to use semantic commit parsing.
+          Version component to force, or auto to use semantic commit parsing.
         required: false
         type: choice
         default: auto
         options:
           - auto
-          - prerelease
           - patch
           - minor
           - major
@@ -32,7 +30,7 @@ concurrency:
 jobs:
   release:
     name: Release
-    uses: worgarside/github-config-files/.github/workflows/__semantic-release.yml@0.3.3
+    uses: worgarside/github-config-files/.github/workflows/__semantic-release.yml@0.5.3
     with:
       python-version: '3.14'
       force-deployment: ${{ inputs.force-deployment != 'auto' && inputs.force-deployment || '' }}
