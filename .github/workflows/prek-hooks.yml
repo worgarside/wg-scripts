@@ -1,5 +1,5 @@
 ---
-name: Pre-Commit Hooks
+name: Prek Hooks
 
 on:
   merge_group:
@@ -14,14 +14,14 @@ on:
       - ready_for_review
 
 concurrency:
-  group: pre-commit-hooks-${{ github.ref }}
+  group: prek-hooks-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  PYTHON_VERSION: '3.14'
-
 jobs:
-  pre-commit:
+  # Keep this job inline until the shared workflow replaces `--no-build`,
+  # which prevents uv from installing this repository's editable package.
+  prek:
+    name: Prek Hooks
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -31,33 +31,30 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           token: ${{ secrets.WORGARSIDE_DEV_TOKEN }}
-          persist-credentials: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
-          python-version: ${{ env.PYTHON_VERSION }}
+          cache-local-path: ${{ github.workspace }}/.uv-cache
+          python-version: '3.14'
 
       - name: Install uv dependencies
-        env:
-          UV_CACHE_DIR: ${{ github.workspace }}/.uv-cache
         run: uv sync --locked --all-groups
 
       - name: Run prek
-        id: run-pch
+        id: run-prek
         uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
         continue-on-error: true
         with:
-          prek-version: 0.3.11
+          prek-version: 0.4.12
           extra-args: --all-files
           cache: true
 
       - name: Commit Modified Files
-        if: steps.run-pch.outcome == 'failure'
+        if: steps.run-prek.outcome == 'failure'
         env:
           REF: ${{ github.event.pull_request.head.ref }}
-          GH_TOKEN: ${{ secrets.WORGARSIDE_DEV_TOKEN }}
         # yamllint disable rule:line-length
         run: |
           if [[ -z "$(git status -s)" ]]; then
@@ -67,7 +64,6 @@ jobs:
 
           git config --global user.name "worgarside-dev"
           git config --global user.email "worgarside.dev@gmail.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           git add .
 
