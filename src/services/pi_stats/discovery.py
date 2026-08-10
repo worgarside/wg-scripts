@@ -478,13 +478,14 @@ def _mount_components(
                 f"{{{{ 'OFF' if {health_path}.healthy else 'ON' }}}}"
                 "{% endif %}"
             ),
-            icon="mdi:harddisk-alert",
+            icon="mdi:harddisk",
             force_update=True,
             payload_on="ON",
             payload_off="OFF",
             device_class="problem",
             entity_category="diagnostic",
         )
+        component["json_attributes_topic"] = stats_topic(hostname)
         component["json_attributes_template"] = f"{{{{ {health_path} | tojson }}}}"
         components[component["unique_id"]] = component
     return components
