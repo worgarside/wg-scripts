@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v2.4.1 (2026-08-10)
+
+### Chores
+
+- **sync**: Pin github-config-files workflows to 0.5.3
+  ([#405](https://github.com/worgarside/wg-scripts/pull/405),
+  [`9f46a86`](https://github.com/worgarside/wg-scripts/commit/9f46a86684894eb087c6e7d934df20d18a7e8673))
+
+### Continuous Integration
+
+- Streamline deployment workflows
+  ([`35985a9`](https://github.com/worgarside/wg-scripts/commit/35985a935d5148810ff3dd1b435081c1a88ec1f5))
+
+- Update release GitHub token and committer details
+  ([`54ff3a7`](https://github.com/worgarside/wg-scripts/commit/54ff3a711488b83139569d80e7c53412a7020076))
+
+
 ## v2.4.0 (2026-08-10)
 
 ### Chores
