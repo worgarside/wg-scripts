@@ -158,9 +158,7 @@ def inspect_mount(
         mount is not None and realpath(mount.source) == realpath(check.source),
     )
     read_write = bool(
-        mount is not None
-        and "rw" in mount.mount_options
-        and "rw" in mount.super_options,
+        mount is not None and "rw" in mount.mount_options and "rw" in mount.super_options,
     )
     required_directories_present = {
         directory: is_directory(Path(check.path) / directory)

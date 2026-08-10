@@ -609,9 +609,7 @@ def read_smart_stats(
             error_key = f"{device.device}:NoOutput"
             if error_key not in _SMART_READ_ERRORS_LOGGED:
                 _SMART_READ_ERRORS_LOGGED.add(error_key)
-                LOGGER.warning(
-                    "SMART read for %s returned no usable JSON", device.device
-                )
+                LOGGER.warning("SMART read for %s returned no usable JSON", device.device)
             continue
 
         parsed = _parse_smart_device_stats(device, probe)
