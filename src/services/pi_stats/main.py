@@ -36,6 +36,11 @@ from services.pi_stats.discovery import (
     save_component_platforms,
     stats_topic,
 )
+from services.pi_stats.mount_health import (
+    MountHealth,
+    collect_mount_health,
+    parse_mount_checks,
+)
 from wg_scripts import __version__
 
 if TYPE_CHECKING:
@@ -87,6 +92,7 @@ DISK_USAGE_PATHS: Final[tuple[str, ...]] = tuple(
     for path in getenv("DISK_USAGE_PATHS", "/home").split(",")
     if path.strip()
 )
+MOUNT_CHECKS: Final = parse_mount_checks(getenv("PI_STATS_MOUNTS_JSON", "[]"))
 
 
 def _positive_int_env(name: str, default: str) -> int:
@@ -104,6 +110,10 @@ def _positive_int_env(name: str, default: str) -> int:
 APT_CHECK_INTERVAL_SECONDS: Final = _positive_int_env(
     "APT_CHECK_INTERVAL_SECONDS",
     "21600",
+)
+MQTT_DISCONNECT_EXIT_SECONDS: Final = _positive_int_env(
+    "PI_STATS_MQTT_DISCONNECT_EXIT_SECONDS",
+    "60",
 )
 
 AVAILABILITY_TOPIC: Final = availability_topic(mqtt.HOSTNAME)
@@ -141,6 +151,7 @@ class Stats(TypedDict):
     memory_usage: float
     temperature: float
     disk_usage: dict[str, float]
+    mount_health: NotRequired[dict[str, MountHealth]]
     load_1m: float
     load_5m: float
     load_15m: float
@@ -965,6 +976,8 @@ class RaspberryPi:
             "cpu_iowait": cpu_iowait,
             "reboot_required": reboot_required(),
         }
+        if MOUNT_CHECKS:
+            stats["mount_health"] = collect_mount_health(MOUNT_CHECKS)
         self._attach_optional_stats(stats, refresh_slow=refresh_slow)
         return stats
 
@@ -1050,6 +1063,7 @@ def publish_discovery(client: Client) -> None:
         mqtt.HOSTNAME,
         DISK_USAGE_PATHS,
         previous_component_platforms,
+        mount_checks=MOUNT_CHECKS,
         has_fan=find_pwmfan_hwmon() is not None,
         smart_devices=find_smart_devices(),
     )
@@ -1143,6 +1157,28 @@ def shutdown(client: Client) -> None:
         client.loop_stop()
 
 
+def record_mqtt_disconnection(disconnected_since: float | None) -> float:
+    """Record a disconnection or exit after the recovery deadline expires."""
+    now = monotonic()
+    if disconnected_since is None:
+        LOGGER.warning(
+            "Disconnected from MQTT broker; waiting up to %d seconds for automatic "
+            "reconnection",
+            MQTT_DISCONNECT_EXIT_SECONDS,
+        )
+        return now
+
+    if now - disconnected_since >= MQTT_DISCONNECT_EXIT_SECONDS:
+        LOGGER.error(
+            "MQTT broker remained disconnected for %d seconds; exiting so the "
+            "service manager can restart the process",
+            MQTT_DISCONNECT_EXIT_SECONDS,
+        )
+        raise SystemExit(1)
+
+    return disconnected_since
+
+
 @process_exception(logger=LOGGER)
 def main() -> None:
     """Sends system stats to Home Assistant every minute."""
@@ -1174,6 +1210,8 @@ def main() -> None:
         LOGGER.error("Failed to connect to MQTT broker, exiting")
         raise SystemExit(1)
 
+    disconnected_since: float | None = None
+
     try:
         # This is done as a while loop, rather than a cron job, so that instantiating
         # the pi etc. every time doesn't influence the readings
@@ -1182,8 +1220,11 @@ def main() -> None:
                 publish_discovery_if_needed(mqtt.CLIENT)
 
                 if not mqtt.CLIENT.is_connected():
+                    disconnected_since = record_mqtt_disconnection(disconnected_since)
                     sleep(1)
                     continue
+
+                disconnected_since = None
 
                 try:
                     mqtt.CLIENT.publish(
