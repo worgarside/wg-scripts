@@ -48,8 +48,9 @@ Each check requires an exact Linux mountpoint, the expected source after resolvi
 device-mapper symlinks, read/write mount and superblock options, and every configured
 child directory. The state payload always includes configured checks—even when they
 fail—under `mount_health`, with booleans, the observed source, missing directories,
-and stable reason codes (`not_mounted`, `wrong_source`, `read_only`, and
-`missing_required_directories`). Invalid configuration fails before MQTT is touched.
+and stable reason codes (`not_mounted`, `wrong_source`, `read_only`,
+`missing_required_directories`, and `inspection_error`). Invalid configuration
+fails before MQTT is touched.
 
 When a Pi 5 Active Cooler (or compatible) exposes a `pwmfan` hwmon device, the
 payload also includes:

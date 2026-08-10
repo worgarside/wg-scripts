@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import posixpath
 import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -94,7 +95,10 @@ def _parse_mount_check(index: int, item: object) -> MountCheck:
         raise ValueError(
             f"Mount check {index} id must match {MOUNT_ID.pattern!r}",
         )
-    if not isinstance(path, str) or not PurePosixPath(path).is_absolute():
+    if not isinstance(path, str):
+        raise TypeError(f"Mount check {identifier!r} path must be a string")
+    path = posixpath.normpath(path)
+    if not PurePosixPath(path).is_absolute():
         raise ValueError(f"Mount check {identifier!r} path must be absolute")
     if not isinstance(source, str) or not PurePosixPath(source).is_absolute():
         raise ValueError(f"Mount check {identifier!r} source must be absolute")
