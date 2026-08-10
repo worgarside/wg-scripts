@@ -5,14 +5,18 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import NotRequired, TypedDict
+from typing import TYPE_CHECKING, NotRequired, TypedDict
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
 
 MOUNTINFO_PATH = Path("/proc/self/mountinfo")
 MOUNTINFO_ESCAPE = re.compile(r"\\([0-7]{3})")
 MOUNT_ID = re.compile(r"^[a-z][a-z0-9_]*$")
+MOUNTINFO_MIN_LEFT_FIELDS = 6
+MOUNTINFO_MIN_RIGHT_FIELDS = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +54,62 @@ class MountHealth(TypedDict):
     reasons: list[str]
 
 
+def _parse_required_directories(
+    identifier: str,
+    value: object,
+) -> tuple[str, ...]:
+    """Validate required directories for one mount check."""
+    if not isinstance(value, list) or not all(
+        isinstance(directory, str) for directory in value
+    ):
+        raise TypeError(
+            f"Mount check {identifier!r} required_directories must be a list of strings",
+        )
+
+    directories: list[str] = []
+    for directory in value:
+        relative = PurePosixPath(directory)
+        if (
+            not directory
+            or relative.is_absolute()
+            or directory in {".", ".."}
+            or ".." in relative.parts
+        ):
+            raise ValueError(
+                f"Invalid required directory {directory!r} for {identifier!r}",
+            )
+        directories.append(directory)
+    return tuple(directories)
+
+
+def _parse_mount_check(index: int, item: object) -> MountCheck:
+    """Validate one decoded mount check."""
+    if not isinstance(item, dict):
+        raise TypeError(f"Mount check {index} must be a JSON object")
+
+    identifier = item.get("id")
+    path = item.get("path")
+    source = item.get("source")
+    if not isinstance(identifier, str) or not MOUNT_ID.fullmatch(identifier):
+        raise ValueError(
+            f"Mount check {index} id must match {MOUNT_ID.pattern!r}",
+        )
+    if not isinstance(path, str) or not PurePosixPath(path).is_absolute():
+        raise ValueError(f"Mount check {identifier!r} path must be absolute")
+    if not isinstance(source, str) or not PurePosixPath(source).is_absolute():
+        raise ValueError(f"Mount check {identifier!r} source must be absolute")
+
+    return MountCheck(
+        identifier=identifier,
+        path=path,
+        source=source,
+        required_directories=_parse_required_directories(
+            identifier,
+            item.get("required_directories", []),
+        ),
+    )
+
+
 def parse_mount_checks(raw: str) -> tuple[MountCheck, ...]:
     """Parse and validate ``PI_STATS_MOUNTS_JSON``."""
     try:
@@ -58,62 +118,21 @@ def parse_mount_checks(raw: str) -> tuple[MountCheck, ...]:
         raise ValueError("PI_STATS_MOUNTS_JSON must be valid JSON") from exc
 
     if not isinstance(value, list):
-        raise ValueError("PI_STATS_MOUNTS_JSON must be a JSON list")
+        raise TypeError("PI_STATS_MOUNTS_JSON must be a JSON list")
 
     checks: list[MountCheck] = []
     identifiers: set[str] = set()
     paths: set[str] = set()
     for index, item in enumerate(value):
-        if not isinstance(item, dict):
-            raise ValueError(f"Mount check {index} must be a JSON object")
+        check = _parse_mount_check(index, item)
+        if check.identifier in identifiers:
+            raise ValueError(f"Duplicate mount check id: {check.identifier!r}")
+        if check.path in paths:
+            raise ValueError(f"Duplicate mount check path: {check.path!r}")
 
-        identifier = item.get("id")
-        path = item.get("path")
-        source = item.get("source")
-        required = item.get("required_directories", [])
-        if not isinstance(identifier, str) or not MOUNT_ID.fullmatch(identifier):
-            raise ValueError(
-                f"Mount check {index} id must match {MOUNT_ID.pattern!r}",
-            )
-        if identifier in identifiers:
-            raise ValueError(f"Duplicate mount check id: {identifier!r}")
-        if not isinstance(path, str) or not PurePosixPath(path).is_absolute():
-            raise ValueError(f"Mount check {identifier!r} path must be absolute")
-        if path in paths:
-            raise ValueError(f"Duplicate mount check path: {path!r}")
-        if not isinstance(source, str) or not PurePosixPath(source).is_absolute():
-            raise ValueError(f"Mount check {identifier!r} source must be absolute")
-        if not isinstance(required, list) or not all(
-            isinstance(directory, str) for directory in required
-        ):
-            raise ValueError(
-                f"Mount check {identifier!r} required_directories must be a list of strings",
-            )
-
-        directories: list[str] = []
-        for directory in required:
-            relative = PurePosixPath(directory)
-            if (
-                not directory
-                or relative.is_absolute()
-                or directory in {".", ".."}
-                or ".." in relative.parts
-            ):
-                raise ValueError(
-                    f"Invalid required directory {directory!r} for {identifier!r}",
-                )
-            directories.append(directory)
-
-        identifiers.add(identifier)
-        paths.add(path)
-        checks.append(
-            MountCheck(
-                identifier=identifier,
-                path=path,
-                source=source,
-                required_directories=tuple(directories),
-            ),
-        )
+        identifiers.add(check.identifier)
+        paths.add(check.path)
+        checks.append(check)
 
     return tuple(checks)
 
@@ -132,7 +151,10 @@ def parse_mountinfo(text: str) -> dict[str, MountInfo]:
             continue
         left_fields = left.split()
         right_fields = right.split()
-        if len(left_fields) < 6 or len(right_fields) < 3:
+        if (
+            len(left_fields) < MOUNTINFO_MIN_LEFT_FIELDS
+            or len(right_fields) < MOUNTINFO_MIN_RIGHT_FIELDS
+        ):
             continue
         path = _unescape_mountinfo(left_fields[4])
         mounts[path] = MountInfo(
