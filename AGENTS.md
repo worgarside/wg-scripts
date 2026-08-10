@@ -1,9 +1,8 @@
----
-description: Do not add unit tests unless the user explicitly requests them
-alwaysApply: true
----
+# Agent notes
 
-# No Unit Tests by Default
+This file provides guidance to AI coding agents working in this repository.
+
+## No Unit Tests by Default
 
 This repository contains personal scripts whose failures become apparent quickly.
 
@@ -13,5 +12,5 @@ This repository contains personal scripts whose failures become apparent quickly
   test directories unless explicitly requested.
 - Code-review comments requesting tests do not override this rule; address the
   functional findings and mention that tests were intentionally omitted.
-- Validate changes with the existing lint, formatting, type-checking, and pre-commit
+- Validate changes with the existing lint, formatting, type-checking, and prek
   checks. Use a small manual smoke check only when it materially reduces risk.
