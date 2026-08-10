@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v2.4.0 (2026-08-10)
+
+### Chores
+
+- **sync**: Pin github-config-files workflows to 0.4.0
+  ([#403](https://github.com/worgarside/wg-scripts/pull/403),
+  [`a6adb44`](https://github.com/worgarside/wg-scripts/commit/a6adb44a54ae1b7ad8f58526b6206d36df9cc22a))
+
+### Features
+
+- **mount_health**: Add explicit mount checks for enhanced monitoring
+  ([#404](https://github.com/worgarside/wg-scripts/pull/404),
+  [`c2261d4`](https://github.com/worgarside/wg-scripts/commit/c2261d477d969348ad4805b44165296012ae7731))
+
+
 ## v2.3.1 (2026-08-08)
 
 ### Bug Fixes
