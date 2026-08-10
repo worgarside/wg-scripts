@@ -94,11 +94,9 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: python-semantic-release/python-semantic-release@39dd2052f2ce8282a5d932c31d58a2ca06d2550e # v10.6.1
         with:
-          # API only (create GitHub Release). Git push uses the deploy key via
-          # ignore_token_for_push in pyproject.toml.
-          github_token: ${{ github.token }}
-          git_committer_name: worgarside
-          git_committer_email: worgarside@gmail.com
+          github_token: ${{ secrets.WORGARSIDE_DEV_TOKEN }}
+          git_committer_name: worgarside-dev
+          git_committer_email: worgarside.dev@gmail.com
           config_file: pyproject.toml
           verbosity: 2
           force: ${{ inputs.force-deployment != 'auto' && inputs.force-deployment || '' }}
