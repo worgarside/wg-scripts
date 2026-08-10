@@ -12,6 +12,7 @@ discovery so entities are created automatically.
 | MQTT_USERNAME | MQTT broker username | `<hostname>` |
 | MQTT_PASSWORD | MQTT broker password | N/A |
 | DISK_USAGE_PATHS | Comma-separated filesystem paths to report usage for | `/home` |
+| PI_STATS_MOUNTS_JSON | JSON list of explicit mount source/read-write/directory checks | `[]` |
 | PI_STATS_DISCOVERY_STATE_PATH | File used to track previously discovered components | `~/.cache/wg-scripts/pi_stats-discovery-components.json` |
 | APT_CHECK_INTERVAL_SECONDS | How often to re-run `apt list --upgradable` | `21600` (6 hours) |
 
@@ -33,6 +34,24 @@ usage is a nested map of path to usage percentage, for example:
 
 Unavailable paths are logged and omitted from that sample without stopping the rest
 of the stats payload.
+
+### Mount health (optional)
+
+`PI_STATS_MOUNTS_JSON` adds explicit mount checks that are independent of disk-usage
+collection. For example:
+
+```dotenv
+PI_STATS_MOUNTS_JSON='[{"id":"vault_hdd","path":"/mnt/vault-hdd","source":"/dev/mapper/vault-hdd","required_directories":["pbs","immich"]},{"id":"vault_ssd","path":"/mnt/vault-ssd","source":"/dev/mapper/vault-ssd","required_directories":[]}]'
+```
+
+Each check requires an exact Linux mountpoint, the expected source, read/write mount
+and superblock options, and every configured child directory. Local absolute sources
+(such as device-mapper paths) are compared after resolving symlinks; non-path sources
+(such as NFS exports) are compared literally. The state payload always includes
+configured checks—even when they fail—under `mount_health`, with booleans, the
+observed source, missing directories, and stable reason codes (`not_mounted`,
+`wrong_source`, `read_only`, `missing_required_directories`, and
+`inspection_error`). Invalid configuration fails before MQTT is touched.
 
 When a Pi 5 Active Cooler (or compatible) exposes a `pwmfan` hwmon device, the
 payload also includes:
@@ -135,6 +154,7 @@ That creates one Home Assistant device containing:
 - Problem/connectivity binary sensors: throttling active / since boot, network
   link, reboot required
 - One disk-usage sensor per `DISK_USAGE_PATHS` entry
+- One diagnostic problem binary sensor per `PI_STATS_MOUNTS_JSON` entry
 - Fan Speed / Fan PWM sensors when `pwmfan` hwmon is detected at startup
 - Per SMART disk (when detected): health binary sensor, temperature, and wear
 
@@ -145,6 +165,10 @@ Disk entity IDs use path slugs:
 | `/` | `sensor.<hostname>_disk_usage_root` |
 | `/home` | `sensor.<hostname>_disk_usage_home` |
 | `/mnt/storage` | `sensor.<hostname>_disk_usage_mnt_storage` |
+
+Mount entity IDs use the configured stable ID. For example, `vault_hdd` creates
+`binary_sensor.<hostname>_mount_vault_hdd_problem`. The sensor is `on` when any
+check fails and exposes the complete health object as entity attributes.
 
 SMART entity IDs use device-path slugs (`/dev/sda` → `dev_sda`) for stability.
 Friendly names come from smartctl `model_name` (for example
