@@ -27,7 +27,7 @@ except ImportError:
     if platform.system() != "Darwin":
         raise
 
-    class dot3k_lcd:  # type: ignore[no-redef]  # noqa: N801
+    class dot3k_lcd:  # type: ignore[no-redef]  # ruff: ignore[invalid-class-name]
         """Dummy class for lcd import on non-Pi machine."""
 
         @staticmethod
@@ -75,7 +75,7 @@ except ImportError:
     class GpioPin:
         """Dummy class for lcd import on non-Pi machine."""
 
-        def ChangeDutyCycle(  # noqa: N802
+        def ChangeDutyCycle(  # ruff: ignore[invalid-function-name]
             self,
             value: float,
         ) -> None:
@@ -110,7 +110,7 @@ except ImportError:
             _ = pin, mode
 
         @staticmethod
-        def PWM(  # noqa: N802
+        def PWM(  # ruff: ignore[invalid-function-name]
             pin: int,
             mode: int,
         ) -> GpioPin:
@@ -261,7 +261,7 @@ def main() -> None:
             dht22.trigger()
             screen.write_lines(
                 [
-                    datetime.now().strftime("%a, %-d %b %Y"),  # noqa: DTZ005
+                    datetime.now().strftime("%a, %-d %b %Y"),  # ruff: ignore[call-datetime-now-without-tzinfo]
                     TEMP_LINE.format(dht22.temperature),
                     HUMID_LINE.format(dht22.humidity),
                 ],
