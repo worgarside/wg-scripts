@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v2.4.2 (2026-08-11)
+
+### Bug Fixes
+
+- **pi_stats**: Publish mount health attributes and valid icon
+  ([#408](https://github.com/worgarside/wg-scripts/pull/408),
+  [`3e4c0e1`](https://github.com/worgarside/wg-scripts/commit/3e4c0e14859efd0460c648adeb78314a1c0ed80e))
+
+### Continuous Integration
+
+- 🤖 `prek autoupdate` ([#409](https://github.com/worgarside/wg-scripts/pull/409),
+  [`06694b7`](https://github.com/worgarside/wg-scripts/commit/06694b7a1c433e2892f8749e75a345f64621654b))
+
+### Refactoring
+
+- Switch to prek config ([#407](https://github.com/worgarside/wg-scripts/pull/407),
+  [`dacb587`](https://github.com/worgarside/wg-scripts/commit/dacb587f138bf9d17cda629d8141c205312f147e))
+
+
 ## v2.4.1 (2026-08-10)
 
 ### Chores
