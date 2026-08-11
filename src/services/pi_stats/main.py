@@ -11,7 +11,7 @@ from functools import lru_cache
 from json import JSONDecodeError, dumps, loads
 from os import getenv, getloadavg
 from pathlib import Path
-from subprocess import run  # noqa: S404
+from subprocess import run  # ruff: ignore[suspicious-subprocess-import]
 from threading import Event
 from time import monotonic, sleep, time
 from typing import TYPE_CHECKING, ClassVar, Final, NotRequired, TypedDict
@@ -244,7 +244,7 @@ def _run_smartctl(*args: str) -> dict[str, object] | None:
     """
     cmd = ["sudo", "-n", SMARTCTL, *args]
     try:
-        completed = run(  # noqa: S603
+        completed = run(  # ruff: ignore[subprocess-without-shell-equals-true]
             cmd,
             capture_output=True,
             check=False,
@@ -755,7 +755,7 @@ def select_primary_interface(ip_address: str) -> str | None:
 def count_pending_updates() -> int | None:
     """Count packages reported by ``apt list --upgradable`` (no index refresh)."""
     try:
-        completed = run(  # noqa: S603
+        completed = run(  # ruff: ignore[subprocess-without-shell-equals-true]
             [APT_BIN, "list", "--upgradable"],
             capture_output=True,
             check=False,
