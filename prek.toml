@@ -34,7 +34,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/astral-sh/uv-pre-commit"
-rev = "0.12.4"
+rev = "0.12.5"
 hooks = [
   { id = "uv-lock" }
 ]
@@ -115,7 +115,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/DetachHead/basedpyright-prek-mirror"
-rev = "1.39.9"
+rev = "1.39.10"
 hooks = [
   {
     id = "basedpyright",
